@@ -1,0 +1,3 @@
+[submodule "NGPinterface"]
+	path = NGPinterface
+	url = https://github.com/genomic-medicine-sweden/NGPinterface.git
