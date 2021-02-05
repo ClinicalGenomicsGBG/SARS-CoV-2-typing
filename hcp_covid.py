@@ -37,7 +37,7 @@ def upload_fastq(args, files_pg, hcpm):
     if args.filepath:
         # Uploads associated json files.
         hcpm.upload_file(f"{args.filepath}",
-                            f"{args.remotepath}/"+os.path.basename(args.filepath))
+                            "covid-wgs"+os.path.basename(args.filepath))
 
 def search(hcpm):
     lst = (hcpm.search_objects("covid-wgs"))
@@ -62,8 +62,6 @@ def arg():
                             help="path to directory with files for upload")
     requiredUpload.add_argument("-f", "--filepath",
                             help="path to single file")
-    requiredUpload.add_argument("-r", "--remotepath",
-                            help="path to directory to put files on HCP")
     requiredUpload.add_argument("-l", "--listfiles",
                             action="store_true",
                             help="list existing files")
