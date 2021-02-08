@@ -1,29 +1,24 @@
 #!/usr/bin/env python3
 
-# Wrapper that uploads FASTQ files.
+# Wrapper that uploads files.
 # Uploads the files to selected bucket on the HCP.
+# Lists files in covid-wgs diretory.
 
 import glob
 import argparse
 import os
 import json
 import sys
-#sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-#from hcp.hcp import HCPManager
 from NGPinterface.hcp import HCPManager
 
 ##############################################
 # List files that will be uploaded on the HCP.
-# Depending on if the files are compressed or not.
 def files(args):
-    if glob.glob(f"{args.path}/*.fasterq"):
-        file_lst = glob.glob(f"{args.path}/*.fasterq")
-    else:
-        file_lst = glob.glob(f"{args.path}/*.fastq.gz") 
+    file_lst = glob.glob(args.path)
     return file_lst
 
 
-# Upload FASTQ and json to selected bucket on HCP.
+# Upload files and json to selected bucket on HCP.
 def upload_fastq(args, files_pg, hcpm):
 #    hcpm = HCPManager(args.endpoint, args.aws_access_key_id, args.aws_secret_access_key)
 #    hcpm.attach_bucket(args.bucket)
@@ -59,6 +54,7 @@ def arg():
     requiredUpload.add_argument("-b", "--bucket",
                             help="bucket name")
     requiredUpload.add_argument("-p", "--path",
+                            action='store',
                             help="path to directory with files for upload")
     requiredUpload.add_argument("-f", "--filepath",
                             help="path to single file")
@@ -75,13 +71,14 @@ def main():
     args = arg()
     files_pg = files(args)
 
+    # Connect to HCP
     hcpm = HCPManager(args.endpoint, args.aws_access_key_id, args.aws_secret_access_key)
     hcpm.attach_bucket(args.bucket)
     
     if args.listfiles:
         search(hcpm)
 
-    upload_fastq(args, files_pg, hcpm)
+   upload_fastq(args, files_pg, hcpm)
 
 
 if __name__ == "__main__":
