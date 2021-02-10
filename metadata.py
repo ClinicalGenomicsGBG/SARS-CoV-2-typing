@@ -3,9 +3,16 @@
 import json
 import pandas as pd
 import openpyxl
+import argparse
 
-def metadata_json():
-    df = pd.DataFrame(pd.read_excel("/home/xcanfv/Dataexport_direkttest_10rader.xlsx", engine='openpyxl'))
+def arg():
+    parser = argparse.ArgumentParser(prog="metadata.py")
+    parser.add_argument("-f", "--filepath", help="path to excel file to parse")
+    args = parser.parse_args()
+    return args
+
+def metadata_json(args):
+    df = pd.DataFrame(pd.read_excel(args.filepath, engine='openpyxl'))
     for index,rows in df.iterrows():
         metafile = open(f"{rows['Referensnummer']}_metadata.json","w")
         metafile.write(json.dumps({"reference": rows["Referensnummer"], 
@@ -38,6 +45,6 @@ def metadata_json():
             indent=4))
         metafile.close()
 
-metadata_json()
+metadata_json(arg())
 
 
