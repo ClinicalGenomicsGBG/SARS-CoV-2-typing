@@ -15,7 +15,7 @@ echo "** LOG: Starting sFTP sync @ $CURRENTTIME" >> $LOGFILE
 lftp -e 'mirror -vvv / /medstore/results/clinical/SARS-CoV-2-typing/eurofins_data/; bye' \
   -u $FTPUSER,$FTPKEY \
   ftp.gatc-biotech.com:21 \
-  >> $LOGFILE
+  &>> $LOGFILE
 
 # Check the MD5sums of the recently downloaded files
 CURDIR=$(pwd)
