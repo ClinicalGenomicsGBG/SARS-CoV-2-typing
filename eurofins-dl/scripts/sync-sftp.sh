@@ -26,7 +26,7 @@ find $DATALOC -name "md5sums.txt" -newerct "$CURRENTTIME" | while read x; do \
   md5sum -c $x >> $LOGFILE
   EXITSTATUS=$?
   if [ $EXITSTATUS -ne 0 ]; then
-    echo "** ERROR: found in mmd5sums" >> $LOGFILE
+    echo "** ERROR: found in md5sums" >> $LOGFILE
   else
     echo "** LOG: All md5sums correct" >> $LOGFILE
   fi
@@ -35,11 +35,14 @@ cd $CURDIR
 
 # Rename pangolin file to have a unique identifier (same as plate name)
 echo "** LOG: Making renamed copy of pangolin file." >> $LOGFILE
-find $DATALOC -name "pangolin_lineage_classification.txt" -newerct "$CURRENTTIME" | while read x; do \
-  BASE=${x%/pangolin_lineage_classification.txt}
+find $DATALOC -name "CO-00004_pangolin_lineage_classification.txt" -newerct "$CURRENTTIME" | while read x; do \
+  echo "** LOG: found un-renamed pangolin file $x" >> $LOGFILE
+  BASE=${x%/CO-00004_pangolin_lineage_classification.txt}
   PLATEID=${BASE##*/}
   # This makes a cop.y Change to mv if we don't need original
-  cp $x ${BASE}/${PLATEID}_pangolin_lineage_classification.txt &>> $LOGFILE
+  new_x=${BASE}/${PLATEID}_CO-00004_pangolin_lineage_classification.txt
+  echo "** LOG: Renaming to $new_x" >> $LOGFILE
+  cp $x $new_x &>> $LOGFILE
   EXITSTATUS=$?
   if [ $EXITSTATUS -ne 0 ]; then
     echo "** ERROR: Problem when copying file $x" >> $LOGFILE
