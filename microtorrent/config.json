@@ -1,0 +1,6 @@
+{
+    "seqstore": {
+        "mount_path": "/seqstore/instruments/s5_01_mik/",
+        "run_regex": "[0-9]+-[0-9]+_[0-9]{6}_"
+    }
+}
