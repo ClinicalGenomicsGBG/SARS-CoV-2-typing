@@ -1,5 +1,10 @@
 #!/usr/bin/env bash
 
+#Check that arguments have been passed
+if [ "$#" -lt 2 ]; then
+    echo "Usage: sync-sftp.sh <ftp username> <ftp password>"
+fi
+
 LOGFILE='/medstore/logs/pipeline_logfiles/sars-cov-2-typing/eurofins-dl.log'
 DATALOC='/medstore/results/clinical/SARS-CoV-2-typing/eurofins_data/'
 CURRENTTIME=$(date "+%Y-%m-%d %H:%M:%S")
