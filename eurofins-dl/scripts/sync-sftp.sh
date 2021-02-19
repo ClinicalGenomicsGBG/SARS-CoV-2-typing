@@ -1,5 +1,10 @@
 #!/usr/bin/env bash
 
+#Check that arguments have been passed
+if [ "$#" -lt 2 ]; then
+    echo "Usage: sync-sftp.sh <ftp username> <ftp password>"
+fi
+
 LOGFILE='/medstore/logs/pipeline_logfiles/sars-cov-2-typing/eurofins-dl.log'
 DATALOC='/medstore/results/clinical/SARS-CoV-2-typing/eurofins_data/'
 CURRENTTIME=$(date "+%Y-%m-%d %H:%M:%S")
@@ -35,12 +40,13 @@ cd $CURDIR
 
 # Rename pangolin file to have a unique identifier (same as plate name)
 echo "** LOG: Making renamed copy of pangolin file." >> $LOGFILE
-find $DATALOC -name "CO-00004_pangolin_lineage_classification.txt" -newerct "$CURRENTTIME" | while read x; do \
+find $DATALOC -name "CO*_pangolin_lineage_classification.txt" -newerct "$CURRENTTIME" | while read x; do \
   echo "** LOG: found un-renamed pangolin file $x" >> $LOGFILE
-  BASE=${x%/CO-00004_pangolin_lineage_classification.txt}
+  FILENAME=$(basename $x)
+  BASE=${x%/$FILENAME}
   PLATEID=${BASE##*/}
-  # This makes a cop.y Change to mv if we don't need original
-  new_x=${BASE}/${PLATEID}_CO-00004_pangolin_lineage_classification.txt
+  # This makes a copy Change to mv if we don't need original
+  new_x=${BASE}/${PLATEID}_$FILENAME
   echo "** LOG: Renaming to $new_x" >> $LOGFILE
   cp $x $new_x &>> $LOGFILE
   EXITSTATUS=$?
