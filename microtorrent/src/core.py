@@ -1,20 +1,40 @@
 import os
 import re
 import json
+import requests
 from glob import glob
 
 from definitions import CONFIG_PATH, PREVIOUS_PATH
 
 
-class SampleFastq:
-    def __init__(self, filepath):
-        self.filepath = filepath
-        self.filename = os.path.basename(self.filepath)
+class RunClass:
+    def __init__(self, run_path):
+        self.run_path = run_path
+        self.run_name = os.path.basename(self.run_path)
 
-        self._split(filepath)
+        self._split(self.run_name)
 
-    def _split(self, path):
-        basename = os.path.basename(path)
+    def _split(self, run_name):
+        """Split runpath into components."""
+        runreport_id, date, name = run_name.split('_')
+        run_id, report_id = runreport_id.split('-')
+
+        self.name = name
+        self.run_id = run_id
+        self.report_id = report_id
+        self.date = date
+
+
+class SampleClass:
+    def __init__(self, file_path):
+        self.file_path = file_path
+        self.file_name = os.path.basename(self.file_path)
+
+        self._split(self.file_name)
+
+    def _split(self, file_name):
+        """Split file_path into components."""
+        basename = os.path.basename(file_name)
         barcode, name, runreport_id, date = basename.split('_')
         run_id, report_id = runreport_id.split('-')
 
@@ -23,6 +43,17 @@ class SampleFastq:
         self.run_id = run_id
         self.report_id = report_id
         self.date = date
+
+# TORRENT API
+
+def query_api(url):
+    # TODO CONFIG
+    user = 'ionadmin'
+    api_key = '3f2cdec72f8b1783dfc1222cb4f4164c79de53a7'
+    headers = {'Authorization': 'ApiKey {}:{}'.format(user, api_key)}
+    return requests.get(url, headers=headers)
+
+# ---------------------
 
 
 # LOCAL SNIFF
@@ -53,6 +84,10 @@ def write_previous(path, info):
         json.dump(previous_runs, out, indent=4)
 
     return path
+
+
+def find_metadata(root_path):
+    """Assumes metadata placed locally by bioinformatics."""
 # --------------------
 
 
@@ -76,18 +111,40 @@ def test_run():
     previous_runs = read_previous(PREVIOUS_PATH)
 
     for run_path in available_runs:
-        run_name = os.path.basename(run_path)
+        Run = RunClass(run_path)
 
         # Skip already parsed runs
         # TODO Change to sample basis
-        if run_name in previous_runs:
+        if Run.name in previous_runs:
             continue
 
-        info = {run_name: ""}
+        # Check if run belongs to project of relevance
+        instrument_url = "http://torrentserver04.sa.gu.se"
+        results_suburl = f"rundb/api/v1/results/{Run.report_id}"
+        response = query_api(os.path.join(instrument_url, results_suburl))
+
+        if not response:
+            continue
+
+        resp_json = response.json()
+
+        projects_suburls = resp_json['projects']
+        for projects_suburl in projects_suburls:
+            try:
+                project_pk = projects_suburl.split('/')[-2]  # -2 due to trailing /
+            except IndexError:  # If no projects
+                continue
+
+            if project_pk == '26':
+                break
+        else:
+            continue  # If no matching project
+
+        info = {Run.name: ""}
         write_previous(PREVIOUS_PATH, info)
 
         sample_regex = config['seqstore']['sample_regex']
         sample_paths = find_samples(run_path, sample_regex)
 
         for sample_path in sample_paths:
-            Sample = SampleFastq(sample_path)
+            Sample = SampleClass(sample_path)
