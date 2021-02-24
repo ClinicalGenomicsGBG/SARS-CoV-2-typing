@@ -23,8 +23,11 @@ def upload_fastq(args, files_pg, hcpm):
     # List and upload files provided by path flag.
     if args.path:
         for file_pg in files_pg:
-            hcpm.upload_file(file_pg, "covid-wgs/"+os.path.basename(file_pg))
-            print(f"uploading: {file_pg}")
+            if "md5sums.txt" in file_pg or file_pg.endswith("classification.txt"):
+                continue
+            else:
+                hcpm.upload_file(file_pg, "covid-wgs/"+os.path.basename(file_pg))
+                print(f"uploading: {file_pg}")
 
     if args.filepath:
         # Uploads single file.
