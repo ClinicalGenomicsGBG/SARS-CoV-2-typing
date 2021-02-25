@@ -2,17 +2,22 @@
     "seqstore": {
         "mount_path": "/seqstore/instruments/s5_01_mik/",
         "run_regex": "[0-9]+-[0-9]+_[0-9]{6}_",
-        "sample_regex": "[0-9]+_(DE21-[0-9]+)_.+\\.fastq$"
+        "sample_regex": "[0-9]+_(DE21-[0-9]+)_.+\\.fastq$",
+        "metadata_regex": ".+\\.csv"
     },
     "torrent": {
         "sample_regex": "DE21-[0-9]+",
-        "projects": ["CoV2_WGS_rutin"]
+        "projects": ["CoV2_WGS_rutin"],
+        "credentials": {
+            "user": "ionadmin",
+            "api_key": "3f2cdec72f8b1783dfc1222cb4f4164c79de53a7"
+        }
     },
     "hcp": {
         "credentials": {
-            "tenant": "",
-            "access_key": "",
-            "secret_access_key": ""
+            "tenant": "https://vgtn0008.hcp1.vgregion.se:443",
+            "access_key": "Z290ZWJvcmc=",
+            "secret_access_key": "50b94f5526cc530057af9694cf09a870"
         }
     }
 }
