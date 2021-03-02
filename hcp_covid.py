@@ -10,8 +10,26 @@ import os
 import json
 import sys
 from NGPinterface.hcp import HCPManager
+import datetime as dt
 
 ##############################################
+# Check files automatic (eurofins)
+def check_files():
+    now = dt.datetime.now()
+    ago = now-dt.timedelta(minutes=1440)
+
+    path_list = []
+    for root, dirs,files in os.walk('/home/xcanfv/GBG_sars-cov-2-typing/sars-cov-2-typing/'):
+        for fname in files:
+            path = os.path.join(root, fname)
+            st = os.stat(path)
+            mtime = dt.datetime.fromtimestamp(st.st_mtime)
+            if mtime > ago:
+                #print('%s modified %s'%(path, mtime))
+                path_list.append(path)
+        return path_list
+
+
 # List files that will be uploaded on the HCP.
 def files(args):
     file_lst = glob.glob(args.path)
@@ -93,7 +111,9 @@ def arg():
                             help="outputpath for downloaded file")
     requiredUpload.add_argument("-k", "--key",
                             help="filepath on HCP (key) for file to download")
-
+    parser.add_argument("-a", "--automatic", 
+                            action="store_true", 
+                            help="check for files automatically")
     args = parser.parse_args()
 
     return args
@@ -105,6 +125,10 @@ def main():
     # Connect to HCP
     hcpm = HCPManager(args.endpoint, args.aws_access_key_id, args.aws_secret_access_key)
     hcpm.attach_bucket(args.bucket)
+
+    if args.automatic:
+        files_pg = check_files()
+        upload_fastq(args, files_pg, hcpm)
 
     if args.query:
         file_lst = search(args,hcpm)
