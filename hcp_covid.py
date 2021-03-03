@@ -21,7 +21,7 @@ def check_files():
     path_list = []
     for path in glob.glob('/medstore/results/clinical/SARS-CoV-2-typing/eurofins_data/goteborg/2021*/*', recursive=True):
         st = os.stat(path)
-        mtime = dt.datetime.fromtimestamp(st.st_mtime)
+        mtime = dt.datetime.fromtimestamp(st.st_ctime)
         if mtime > ago:
             #print('%s modified %s'%(path, mtime))
             path_list.append(path)
@@ -36,7 +36,7 @@ def files(args):
 # Upload files and json to selected bucket on HCP.
 def upload_fastq(args, files_pg, hcpm):
     # List and upload files provided by path flag.
-    if args.path:
+    if args.path or args.automatic:
         for file_pg in files_pg:
             if "md5sums.txt" in file_pg or file_pg.endswith("classification.txt"):
                 continue
@@ -126,7 +126,7 @@ def main():
     if args.automatic:
         files_pg = check_files()
         print(files_pg)
-    #    upload_fastq(args, files_pg, hcpm)
+        upload_fastq(args, files_pg, hcpm)
 
     if args.query:
         file_lst = search(args,hcpm)
