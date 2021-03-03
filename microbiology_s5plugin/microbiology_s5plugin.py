@@ -25,25 +25,13 @@ class SeqstoreUploadError(Exception):
 
 class microbiology_s5plugin(IonPlugin):
     # The version number for this plugin
-    version = "0.0.1.22"
+    version = "0.0.1.23"
 
     runtypes = [RunType.COMPOSITE]  # Avoids thumbnails
     runlevel = [RunLevel.LAST]   # Plugin runs after all sequencing done
     depends = ['seqstore_upload']
 
     seqstore_root = '/results/seqstore/'
-
-    # def query_result_api(self, pk):
-    #     result_url = '/rundb/api/v1/results/{}/'.format(pk)
-    #     requests.get(base_url + result_url)
-
-    # def compile_info(self, result_json):
-    #     """Grab whatever is important from the result json."""
-
-    #     links = {'experiment': base_url + result_json['experiment'],
-    #              'projects': [base_url + project_url for project_url in result_json['projects']]}
-
-    #     # plugins = {}
 
     def render_seqstore_upload_error(self):
         """TODO Render on seqstore upload not being run yet."""
@@ -64,7 +52,6 @@ class microbiology_s5plugin(IonPlugin):
             html_handle.write('</tr>')
 
             for sample_info in approved:
-                # html_handle.write('{}: {}<br>'.format(sample_info['name'], sample_info['description']))
                 html_handle.write('<tr>')
                 html_handle.write('<td>{}</td>'.format(sample_info['name']))
                 html_handle.write('<td>{}</td>'.format(sample_info['description']))
@@ -196,7 +183,9 @@ class microbiology_s5plugin(IonPlugin):
                     else:
                         continue
 
-        with open('compiled.json', 'w') as out:
+        compiled_output_path = os.path.join(run_info['seqstore_directory_path'],
+                                            'compiled.json')  # TODO Namechange
+        with open(compiled_output_path, 'w') as out:
             json.dump(approved, out, indent=4)
 
         self.render_plugin_success(approved)
