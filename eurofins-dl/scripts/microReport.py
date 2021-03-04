@@ -30,7 +30,7 @@ def main(eurofinsdir, syncdir, syncedfiles, logfile):
         synced = sync_file.read().splitlines()
 
     # Find all pangolin files in the Eurofins folder
-    pangolin_list = glob.glob(eurofinsdir + "/*/*_CO-00004_pangolin_lineage_classification.txt")
+    pangolin_list = glob.glob(eurofinsdir + "/*/*_pangolin_lineage_classification_fillempty.txt")
 
     # Add the synced files to the list
     f = open(syncedfiles, "a")
