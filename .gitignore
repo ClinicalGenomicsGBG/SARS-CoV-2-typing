@@ -2,3 +2,4 @@ microbiology-reporter/conda-env
 microbiology-reporter/test-lftp/
 .idea/
 eurofins-dl/conda-env/
+eurofins-dl/syncedFiles.txt
