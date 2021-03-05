@@ -8,10 +8,10 @@ from shutil import copy
 
 @click.command()
 @click.option('-e', '--eurofinsdir', required=True,
-              default='/medstore/results/clinical/SARS-CoV-2-typing/eurofins_data',
+              default='/medstore/results/clinical/SARS-CoV-2-typing/eurofins_data/goteborg',
               help='Path to Eurofins data download directory')
 @click.option('-s', '--syncdir', required=True,
-              default='/seqstore/remote/outbox/sarscov2-micro/shared',
+              default='/seqstore/remote/outbox/sarscov2-micro/shared/eurofins',
               help='Path to sFTP directory to sync to')
 @click.option('-f', '--syncedfiles', required=True,
               default='/apps/bio/repos/sars-cov-2-typing/eurofins-dl/syncedFiles.txt',
