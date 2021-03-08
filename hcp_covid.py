@@ -125,7 +125,6 @@ def main():
 
     if args.automatic:
         files_pg = check_files()
-        print(files_pg)
         upload_fastq(args, files_pg, hcpm)
 
     if args.query:
