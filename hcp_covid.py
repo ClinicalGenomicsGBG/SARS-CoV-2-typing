@@ -48,7 +48,7 @@ def files(args):
 # Upload files and json to selected bucket on HCP.
 def upload_fastq(args, files_pg, hcpm):
     # List and upload files provided by path flag.
-    if args.path or args.automatic:
+    if args.path or args.eurofins or args.direkttest:
         for file_pg in files_pg:
             if "md5sums.txt" in file_pg or file_pg.endswith("classification.txt"):
                 continue
