@@ -12,6 +12,7 @@ def arg():
     parser = argparse.ArgumentParser(prog="direkttest_csv.py")
     parser.add_argument("-f", "--filepath", help="path to excel file to parse")
     parser.add_argument("-a", "--automatic", action="store_true", help="automatic file search from direkttest")
+
     args = parser.parse_args()
     return args
 
@@ -32,7 +33,6 @@ def check_files():
 
 
 def csv_from_excel(path):
-    print(path)
     df = pd.DataFrame(pd.read_excel(path, engine='openpyxl')).fillna(value = "NULL")
     df.to_csv(os.path.basename(path).replace("xlsx","csv"), index=None, header=True)
 
