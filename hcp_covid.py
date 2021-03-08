@@ -14,18 +14,30 @@ import datetime as dt
 
 ##############################################
 # Check files automatic (eurofins)
-def check_files():
+def check_files(args):
     now = dt.datetime.now()
     ago = now-dt.timedelta(minutes=1440)
 
-    path_list = []
-    for path in glob.glob('/medstore/results/clinical/SARS-CoV-2-typing/eurofins_data/goteborg/2021*/*', recursive=True):
-        st = os.stat(path)
-        mtime = dt.datetime.fromtimestamp(st.st_ctime)
-        if mtime > ago:
-            #print('%s modified %s'%(path, mtime))
-            path_list.append(path)
-    return path_list
+    if args.eurofins:
+        path_list = []
+        for path in glob.glob('/medstore/results/clinical/SARS-CoV-2-typing/eurofins_data/goteborg/2021*/*', recursive=True):
+            st = os.stat(path)
+            mtime = dt.datetime.fromtimestamp(st.st_ctime)
+            if mtime > ago:
+                #print('%s modified %s'%(path, mtime))
+                path_list.append(path)
+        return path_list
+
+    if args.direkttest:
+        path_list = []
+        for path in glob.glob('/medstore/results/clinical/SARS-CoV-2-typing/direkttest/*', recursive=True):
+            st = os.stat(path)
+            mtime = dt.datetime.fromtimestamp(st.st_ctime)
+            if mtime > ago:
+                #print('%s modified %s'%(path, mtime))
+                path_list.append(path)
+        return path_list
+
 
 # List files that will be uploaded on the HCP.
 def files(args):
@@ -108,9 +120,12 @@ def arg():
                             help="outputpath for downloaded file")
     requiredUpload.add_argument("-k", "--key",
                             help="filepath on HCP (key) for file to download")
-    parser.add_argument("-a", "--automatic", 
+    parser.add_argument("-e", "--eurofins", 
                             action="store_true", 
-                            help="check for files automatically")
+                            help="check for eurofins files automatically")
+    parser.add_argument("-i", "--direkttest", 
+                            action="store_true", 
+                            help="check for direkttest files automatically")
     args = parser.parse_args()
 
     return args
@@ -123,8 +138,8 @@ def main():
     hcpm = HCPManager(args.endpoint, args.aws_access_key_id, args.aws_secret_access_key)
     hcpm.attach_bucket(args.bucket)
 
-    if args.automatic:
-        files_pg = check_files()
+    if args.eurofins or args.direkttest:
+        files_pg = check_files(args)
         upload_fastq(args, files_pg, hcpm)
 
     if args.query:
