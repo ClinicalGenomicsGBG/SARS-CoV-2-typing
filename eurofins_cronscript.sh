@@ -13,7 +13,7 @@ conda deactivate
 source activate vilma_general
 
 # Fill empty cells in pangolin results file with NULL, checks files automatically, 24 hrs
-/apps/bio/repos/sars-cov-2-typing/pangolin_fillemptyfield.py -a 
+/apps/bio/repos/sars-cov-2-typing/pangolin_fillemptyfield.py -e 
 
 # Send files to mikro
 /apps/bio/repos/sars-cov-2-typing/eurofins-dl/scripts/microReport.py
