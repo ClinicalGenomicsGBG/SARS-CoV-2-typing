@@ -10,17 +10,34 @@ import glob
 def arg():
     parser = argparse.ArgumentParser(prog="pangolin_fillemptyfield.py")
     parser.add_argument("-f", "--filepath", help="path to excel file to parse")
-    parser.add_argument("-a", "--automatic", action="store_true", help="check for files automatically")
+    parser.add_argument("-e", "--eurofins", action="store_true", help="check for eurofins files automatically")
+    parser.add_argument("-n", "--nextseq", action="store_true", help="check for nextseq files automatically")
     args = parser.parse_args()
     return args
 
-def check_files():
+
+def check_files_eurofins():
     now = dt.datetime.now()
     ago = now-dt.timedelta(minutes=1440)
 #print(os.path.basename(os.path.dirname(path)))
 
     path_list = []
     for path in glob.glob('/medstore/results/clinical/SARS-CoV-2-typing/eurofins_data/goteborg/2021*/*', recursive=True):
+        st = os.stat(path)
+        mtime = dt.datetime.fromtimestamp(st.st_ctime)
+        if mtime > ago:
+            #print('%s modified %s'%(path, mtime))
+            path_list.append(path)
+    return path_list
+
+
+def check_files_nextseq():
+    now = dt.datetime.now()
+    ago = now-dt.timedelta(minutes=1440)
+#print(os.path.basename(os.path.dirname(path)))
+
+    path_list = []
+    for path in glob.glob('/medstore/results/clinical/SARS-CoV-2-typing/nextseq_data/21*/lineage/*', recursive=True):
         st = os.stat(path)
         mtime = dt.datetime.fromtimestamp(st.st_ctime)
         if mtime > ago:
@@ -44,10 +61,14 @@ def fill_empty_cells(args):
 
 def main():
     args = arg()
-    if args.automatic:
-        path = check_files()
+    if args.eurofins:
+        path = check_files_eurofins()
         automatic(path)
 
+    if args.nextseq:
+        path = check_files_nextseq()
+        automatic(path)
+        
     else:
         fill_empty_cells(args)
 
