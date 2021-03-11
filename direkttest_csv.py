@@ -34,7 +34,7 @@ def check_files():
 
 def csv_from_excel(path):
     df = pd.DataFrame(pd.read_excel(path, engine='openpyxl')).fillna(value = "NULL")
-    df.to_csv(os.path.basename(path).replace("xlsx","csv"), index=None, header=True)
+    df.to_csv(os.path.abspath(path).replace("xlsx","csv"), index=None, header=True)
 
 
 def main():
