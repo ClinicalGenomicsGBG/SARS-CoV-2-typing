@@ -55,7 +55,7 @@ def main(eurofinsdir, syncdir, syncedfiles, logfile):
 if __name__ == '__main__':
     main()
 
-# Kolla vilka filer som redan laddats över - Läsa in från en fil
+# Kolla vilka filer som redan laddats over - Lasa in fran en fil
 # Hitta alla pangolin resultat i eurofins mappen
-# Synca över de som saknas
-# Göra en md5sum på filen när den är på plats
+# Synca over de som saknas
+# Gora en md5sum pa filen nar den ar pa plats
