@@ -53,8 +53,11 @@ def upload_fastq(args, files_pg, hcpm):
             if "md5sums.txt" in file_pg or file_pg.endswith("classification.txt"):
                 continue
             else:
-                hcpm.upload_file(file_pg, "covid-wgs/"+os.path.basename(file_pg))
-                print(f"uploading: {file_pg}")
+                try:
+                    hcpm.upload_file(file_pg, "covid-wgs/"+os.path.basename(file_pg))
+                    print(f"uploading: {file_pg}")
+                except:
+                    continue
 
     if args.filepath:
         # Uploads single file.
