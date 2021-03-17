@@ -157,6 +157,10 @@ def main():
         upload_fastq(args, files_pg,hcpm)
 
     if args.download:
+        if args.query:
+            file_lst = search(args,hcpm)
+        else:
+            file_lst = []
         download_fastq(args, hcpm, file_lst)
 
 
