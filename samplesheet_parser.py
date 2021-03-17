@@ -5,9 +5,19 @@
 
 from sample_sheet import SampleSheet
 import json
+import argparse
+import os
+
+
+def arg():
+    parser = argparse.ArgumentParser(prog="samplesheet_parser.py")
+    parser.add_argument("-f", "--filepath", help="path to samplesheet file to parse")
+    args = parser.parse_args()
+    return args
+
  
-def sample_sheet():
-    Sheet = SampleSheet("/home/xcanfv/GBG_sars-cov-2-typing/sars-cov-2-typing/SampleSheet_CovidSeq_Prep2-3_Pool2_210315.csv")
+def sample_sheet(args):
+    Sheet = SampleSheet(args.filepath)
     data = {}
     for sample in Sheet.samples:
         sample_name = sample['Sample_ID']
@@ -25,11 +35,12 @@ def sample_sheet():
             'ct_value': description.split("_")[7]
         })
 
-    with open('data.txt', 'w') as outfile:
+    with open((os.path.basename(args.filepath)).replace("csv","json"), 'w') as outfile:
         json.dump(data, outfile,indent=4)
 
 def main():
-    sample_sheet()
+    args = arg()
+    sample_sheet(args)
 
 
 if __name__ == "__main__":
