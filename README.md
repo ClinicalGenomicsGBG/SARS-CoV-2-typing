@@ -24,7 +24,14 @@ If everything in a directory is going to be uploaded just write `*`. The script 
 ```
 
 ### Downloading files
+One at a time (specific path using --key)
 
 ```python
-./hcp_covid.py -ep <endpoint-url> -aki <aws_access_key_id> -sak <aws_secret_access_key> -b <bucketname> -d <filename on HCP> -o <path/to/outputdir>
+./hcp_covid.py -ep <endpoint-url> -aki <aws_access_key_id> -sak <aws_secret_access_key> -b <bucketname> -k <filename on HCP> -o <path/to/outputdir> --download
+```
+
+Several files related to a query (--query, e.g. every file containing "CO-O67")
+
+```python
+./hcp_covid.py -ep <endpoint-url> -aki <aws_access_key_id> -sak <aws_secret_access_key> -b <bucketname> -q <query> -o <path/to/outputdir> --download
 ```
