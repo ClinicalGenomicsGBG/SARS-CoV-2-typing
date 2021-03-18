@@ -1,5 +1,4 @@
 channels:
-  - defaults
   - conda-forge
   - bioconda
 dependencies:
@@ -8,4 +7,4 @@ dependencies:
   - click
   - boto3==1.12.34
   - openpyxl==2.6.3
-  - sample_sheet
+  - sample-sheet
