@@ -52,19 +52,6 @@ def main(runid, demultiplexdir, logdir, inputdir, samplesheetname, regioncode, l
     #Read in all sampleIDs
     samples = sample_sheet(sspath)
     
-    #Make a folder to put links to all files to upload
-    # syncfolder = os.path.join(inputdir, runid, "GENSAM-sync")
-    # if os.path.isdir(syncfolder):
-    #     log.write(writelog("WARNING", "GENSAM syncfolder already exists @ " + syncfolder + ". Will still use it."))
-    # else:
-    #     try:
-    #         os.mkdir(syncfolder)
-    #     except OSError:
-    #         log.write(writelog("ERROR", "Creation of GENSAM syncdir failed @ %s" % syncfolder))
-    #         sys.exit("ERROR: Creation of the directory %s failed" % syncfolder)
-    #     else:
-    #         log.write(writelog("LOG", "Created GENSAM syncdir @ " + syncfolder))
-
     #Get a list of all files to upload
     #Sanity checks
     syncdict = defaultdict(lambda: defaultdict(dict))
@@ -86,15 +73,7 @@ def main(runid, demultiplexdir, logdir, inputdir, samplesheetname, regioncode, l
                 #elif dirname == 'fastq':
                     
                 #elif dirname == 'lineage':
-                    
-                    
-                    # dest = os.path.join(syncfolder, fastalinkname)
-                    # if os.path.isfile(dest):
-                    #     log.write(writelog("WARNING", "Link to " + os.path.basename(fastafile) + " already exists @ " + syncfolder + ". Skipping."))
-                    # else:
-                    #     log.write(writelog("LOG", "Linking " + os.path.basename(fastalinkname)))
-                    #     os.symlink(fastatarget, dest)
-
+            
         else:
             log.write(writelog("ERROR", "No " + dirname + " files found."))
             
