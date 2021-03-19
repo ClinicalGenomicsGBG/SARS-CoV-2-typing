@@ -7,6 +7,7 @@ import sys
 import glob
 from sample_sheet import SampleSheet
 from collections import defaultdict
+import pysftp
 
 @click.command()
 @click.option('-r', '--runid', required=True,
@@ -26,10 +27,12 @@ from collections import defaultdict
 @click.option('--labcode', required=True,
               default='SE300',
               help='FOHM lab code')
+@click.option('--sshkey', required=True,
+              help='Path to SSH key to use for sFTP connection')
 @click.option('-l', '--logdir', required=True,
               default='/medstore/logs/pipeline_logfiles/sars-cov-2-typing/GENSAM-upload',
               help='Path to directory where logs should be created')
-def main(runid, demultiplexdir, logdir, inputdir, samplesheetname, regioncode, labcode):
+def main(runid, demultiplexdir, logdir, inputdir, samplesheetname, regioncode, labcode, sshkey):
     #Get the path to samplesheet
     sspath = os.path.join(demultiplexdir, runid, samplesheetname)
 
@@ -48,31 +51,85 @@ def main(runid, demultiplexdir, logdir, inputdir, samplesheetname, regioncode, l
     #Read in all sampleIDs
     samples = sample_sheet(sspath)
 
-    #Get a list of all files to upload
+    #Get a list of all fastq and fasta files to upload
     syncdict = defaultdict(lambda: defaultdict(dict))
-    for dirname in ("fastq", "fasta", "lineage"):
-        log.write(writelog("LOG", "Finding all " + dirname + " files to upload."))
-        dirpath = os.path.join(inputdir, runid, dirname)
-        for sample in samples:
-            dirpath = os.path.join(inputdir, runid, dirname)
-            if dirname == 'fasta':
-                #Find all files to upload based on existing links, count them
-                syncdict['fastacount'] = 0
-                for fastafile in glob.glob(dirpath + "/" + sample + "*consensus.fa"):
-                    #Create symlink names
-                    targetlink = os.readlink(fastafile)
-                    samplename = sample.replace("_", "-") + '.consensus.fasta'
-                    fastauploadname = '_'.join((regioncode, labcode, samplename))
-                    #Store info in dict
-                    syncdict[sample]['fasta'] = fastauploadname
-                    syncdict['fastacount']  += 1
+    log.write(writelog("LOG", "Finding all files to upload."))
+    
+    for sample in samples:
+        #Find all fastq files to upload. Also count them
+        fastqpath = os.path.join(inputdir, runid, 'fastq')
+        for fastqfile in glob.glob(fastqpath + "/" + sample + "*fastq.gz"):
+            targetlink = os.readlink(fastqfile)
+            if targetlink.endswith("R1_001.fastq.gz"): #Fastq files need to have this extension right now
+                syncdict[sample]['fastq']['R1'] = targetlink
+            elif targetlink.endswith("R2_001.fastq.gz"):
+                syncdict[sample]['fastq']['R2'] = targetlink
+            else:
+                log.write(writelog("ERROR", "Found fastq file with ending other than R1(R2)_001.fastq.gz"))
+                sys.exit("ERROR: Found fastq file with ending other than R1(R2)_001.fastq.gz")
+        
+        #Find all fasta files to upload based on existing links. Also count them
+        fastapath = os.path.join(inputdir, runid, 'fasta')
+        for fastafile in glob.glob(fastapath + "/" + sample + "*consensus.fa"):
+            targetlink = os.readlink(fastafile)
+            #Store info in dict
+            syncdict[sample]['fasta'] = targetlink
 
-                #elif dirname == 'fastq':
-                    
-                #elif dirname == 'lineage':
-            
+    #Check that all fastq files are paired
+    #This code feels a bit clunky
+    for sample in syncdict:
+        if syncdict[sample]['fastq']['R1']:
+            if not syncdict[sample]['fastq']['R2']:
+                log.write(writelog("ERROR", "No R2 file found for " + syncdict[sample]['fastq']['R1'] + "."))
+                sys.exit("ERROR: No R2 file found for " + syncdict[sample]['fastq']['R1'] + ".")
+        if syncdict[sample]['fastq']['R2']:
+            if not syncdict[sample]['fastq']['R1']:
+                log.write(writelog("ERROR", "No R1 file found for " + syncdict[sample]['fastq']['R2'] + "."))
+                sys.exit("ERROR: No R1 file found for " + syncdict[sample]['fastq']['R2'] + ".")
 
-    #Upload all symlinks to the FOHM FTP
+    #Check how manny files there is to upload
+    for filetype in ['fastq', 'fasta']:
+        numfiles = countkeys(syncdict, filetype)
+        if filetype == 'fastq':
+            log.write(writelog("LOG", "Found " + str(numfiles) + " " + filetype  + " pairs to upload."))
+        else:
+            log.write(writelog("LOG", "Found " + str(numfiles) + " " + filetype  + " files to upload."))
+
+    #Upload all files to the FOHM FTP
+    #fastq and fasta file
+    for sample in syncdict:
+        if syncdict[sample]['fastq']['R1']: #Check if sample has fastq files to upload
+            fastqR1_src = syncdict[sample]['fastq']['R1']
+            fastqR2_src = syncdict[sample]['fastq']['R2']
+
+            samplename_R1 = sample.replace("_", "-") + '_1.fastq.gz'
+            fastqR1_trgt = '_'.join((regioncode, labcode, samplename_R1))
+            samplename_R2 = sample.replace("_", "-") + '_2.fastq.gz'
+            fastqR2_trgt = '_'.join((regioncode, labcode, samplename_R2))
+            print("sync: " + fastqR1_src + " " + fastqR1_trgt)
+            print("sync: " + fastqR2_src + " " + fastqR2_trgt)
+
+            #Write upload to sFTP here
+
+        if syncdict[sample]['fasta']: #Check if sample has fastq files to upload
+            fasta_src = syncdict[sample]['fasta']
+            samplename_fasta = sample.replace("_", "-") + '.consensus.fasta'
+            fasta_trgt = '_'.join((regioncode, labcode, samplename_fasta))
+            print("sync: " + fasta_src + " " + fasta_trgt)
+            print(" ")
+
+            #Write upload to sFTP here
+
+    #Pangolin classification lineage file
+    pango_now = datetime.datetime.now()
+    pango_date = pango_now.strftime("%Y-%m-%d")
+    
+    lineagepath = os.path.join(inputdir, runid, 'lineage', runid + "_lineage_report.txt")
+    lineage_trgt = '_'.join((regioncode, labcode, pango_date, "pangolin_classification.txt"))
+    print("sync: " + lineagepath + " " + lineage_trgt)
+    print(" ")
+
+    #Write upload to sFTO here
 
     #Finished the workflow
     log.write(writelog("LOG", "Finished GENSAM upload workflow."))
@@ -88,6 +145,9 @@ def checkinput(runid, demultiplexdir, inputdir, regioncode, labcode, logdir, sam
         dirpath = os.path.join(inputdir, runid, dirname)
         if not os.path.exists(dirpath):
             sys.exit("ERROR: No " + dirname + " directory found.")
+        #Specifically check if the lineage file is in place
+        if not os.path.exists(os.path.join(inputdir, runid, 'lineage', runid + "_lineage_report.txt")):
+            sys.exit("ERROR: No lineage file for run " + runid + " found.")
 
     #Make sure region code is an accepted one
     acceptedregions = ['01','03','04','05','06','07','08','09','10','12','13',
@@ -127,6 +187,13 @@ def writelog(logtype, message):
     logstring = "[" + now.strftime("%Y-%m-%d %H:%M:%S") + "] - " + logtype + " - " + message + "\n"
     return logstring
 
+def countkeys(dictname, group):
+    count = 0
+    for keys in dictname:
+        if dictname[keys][group]:
+            count += 1
+    return count
+    
     
 if __name__ == '__main__':
     main()
