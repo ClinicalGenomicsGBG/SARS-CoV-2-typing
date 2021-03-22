@@ -8,6 +8,7 @@ import glob
 from sample_sheet import SampleSheet
 from collections import defaultdict
 import pysftp
+import time
 
 @click.command()
 @click.option('-r', '--runid', required=True,
@@ -32,7 +33,11 @@ import pysftp
 @click.option('-l', '--logdir', required=True,
               default='/medstore/logs/pipeline_logfiles/sars-cov-2-typing/GENSAM-upload',
               help='Path to directory where logs should be created')
-def main(runid, demultiplexdir, logdir, inputdir, samplesheetname, regioncode, labcode, sshkey):
+@click.option('--sftpusername', required=True,
+              help='Username to the GENSAM sFTP')
+@click.option('--sftppassword', required=True,
+              help='Password to the GENSAM sFTP')
+def main(runid, demultiplexdir, logdir, inputdir, samplesheetname, regioncode, labcode, sshkey, sftpusername, sftppassword):
     #Get the path to samplesheet
     sspath = os.path.join(demultiplexdir, runid, samplesheetname)
 
@@ -42,7 +47,10 @@ def main(runid, demultiplexdir, logdir, inputdir, samplesheetname, regioncode, l
     # Start the logging
     now = datetime.datetime.now()
     logfile = os.path.join(logdir, "GENSAM-upload_" + now.strftime("%y%m%d_%H%M%S") + ".log")
+    logfile_sftp = os.path.join(logdir, "GENSAM-upload_" + now.strftime("%y%m%d_%H%M%S") + "_sFTP.log")
     logfile = os.path.join(logdir, "GENSAM-upload_debug.log")
+    logfile_sftp = os.path.join(logdir, "GENSAM-upload_debug_sftp.log")
+
 
     log = open(logfile, "a")
     log.write("----\n")
@@ -95,9 +103,19 @@ def main(runid, demultiplexdir, logdir, inputdir, samplesheetname, regioncode, l
         else:
             log.write(writelog("LOG", "Found " + str(numfiles) + " " + filetype  + " files to upload."))
 
+    #Open the connection to the sFTP
+    log.write(writelog("LOG", "Starting sFTP upload."))
+    try:
+        sftp = pysftp.Connection('seqstore.sahlgrenska.gu.se', username=sftpusername, password=sftppassword, log=logfile_sftp)
+        sftp.chdir("shared/test_gensam")
+    except:
+        log.write(writelog("ERROR", "Establishing sFTP connection failed. Check the sFTP log @ " + logfile_sftp))
+        sys.exit("ERROR: Establishing sFTP connection failed. Check the sFTP log @ " + logfile_sftp)
+
     #Upload all files to the FOHM FTP
     #fastq and fasta file
     for sample in syncdict:
+        #Get all fastq files and construct correct names
         if syncdict[sample]['fastq']['R1']: #Check if sample has fastq files to upload
             fastqR1_src = syncdict[sample]['fastq']['R1']
             fastqR2_src = syncdict[sample]['fastq']['R2']
@@ -106,30 +124,30 @@ def main(runid, demultiplexdir, logdir, inputdir, samplesheetname, regioncode, l
             fastqR1_trgt = '_'.join((regioncode, labcode, samplename_R1))
             samplename_R2 = sample.replace("_", "-") + '_2.fastq.gz'
             fastqR2_trgt = '_'.join((regioncode, labcode, samplename_R2))
-            print("sync: " + fastqR1_src + " " + fastqR1_trgt)
-            print("sync: " + fastqR2_src + " " + fastqR2_trgt)
-
-            #Write upload to sFTP here
-
+            #Upload to sFTP
+            sftp.put(fastqR1_src, fastqR1_trgt)
+            sftp.put(fastqR2_src, fastqR2_trgt)
+            
+        # Get all fasta files and construct correct names
         if syncdict[sample]['fasta']: #Check if sample has fastq files to upload
             fasta_src = syncdict[sample]['fasta']
             samplename_fasta = sample.replace("_", "-") + '.consensus.fasta'
             fasta_trgt = '_'.join((regioncode, labcode, samplename_fasta))
-            print("sync: " + fasta_src + " " + fasta_trgt)
-            print(" ")
+            #Upload to sFTP
+            sftp.put(fasta_src, fasta_trgt)
 
-            #Write upload to sFTP here
 
     #Pangolin classification lineage file
     pango_now = datetime.datetime.now()
     pango_date = pango_now.strftime("%Y-%m-%d")
     
-    lineagepath = os.path.join(inputdir, runid, 'lineage', runid + "_lineage_report.txt")
+    lineagepath = os.path.join(inputdir, runid, 'lineage', runid + "_lineage_report_gensam.txt")
     lineage_trgt = '_'.join((regioncode, labcode, pango_date, "pangolin_classification.txt"))
-    print("sync: " + lineagepath + " " + lineage_trgt)
-    print(" ")
+    sftp.put(lineagepath, lineage_trgt)
 
-    #Write upload to sFTO here
+    #Close the sFTP connection
+    sftp.close()
+    log.write(writelog("LOG", "Finished the sFTP upload."))
 
     #Finished the workflow
     log.write(writelog("LOG", "Finished GENSAM upload workflow."))
@@ -193,7 +211,6 @@ def countkeys(dictname, group):
         if dictname[keys][group]:
             count += 1
     return count
-    
-    
+       
 if __name__ == '__main__':
     main()
