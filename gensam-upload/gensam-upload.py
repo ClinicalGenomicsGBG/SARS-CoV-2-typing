@@ -8,7 +8,8 @@ import glob
 from sample_sheet import SampleSheet
 from collections import defaultdict
 import pysftp
-import time
+import smtplib
+from email.message import EmailMessage
 
 @click.command()
 @click.option('-r', '--runid', required=True,
@@ -37,20 +38,27 @@ import time
               help='Username to the GENSAM sFTP')
 @click.option('--sftppassword', required=True,
               help='Password to the GENSAM sFTP')
-def main(runid, demultiplexdir, logdir, inputdir, samplesheetname, regioncode, labcode, sshkey, sftpusername, sftppassword):
+@click.option('-g', '--gensamcsvdir', required=True,
+              default='/medstore/results/clinical/SARS-CoV-2-typing/nextseq_data/gensam_upload',
+              help='Path to dir where GENSAM upload csv file should be saved')
+@click.option('--no-mail', is_flag=True,
+              help="Set if you do NOT want e-mails to be sent")
+@click.option('--no-upload', is_flag=True,
+              help="Set if you do NOT want to upload files to FOHM. Will still try to connect to the sFTP.")
+def main(runid, demultiplexdir, logdir, inputdir, samplesheetname, regioncode, 
+         labcode, sshkey, sftpusername, sftppassword, gensamcsvdir, no_mail, no_upload):
     #Get the path to samplesheet
     sspath = os.path.join(demultiplexdir, runid, samplesheetname)
 
     #Run checks on all given inputs
-    checkinput(runid, demultiplexdir, inputdir, regioncode, labcode, logdir, samplesheetname, sspath)
+    checkinput(runid, demultiplexdir, inputdir, regioncode, labcode, logdir, samplesheetname, sspath, gensamcsvdir)
     
     # Start the logging
     now = datetime.datetime.now()
     logfile = os.path.join(logdir, "GENSAM-upload_" + now.strftime("%y%m%d_%H%M%S") + ".log")
     logfile_sftp = os.path.join(logdir, "GENSAM-upload_" + now.strftime("%y%m%d_%H%M%S") + "_sFTP.log")
-    logfile = os.path.join(logdir, "GENSAM-upload_debug.log")
-    logfile_sftp = os.path.join(logdir, "GENSAM-upload_debug_sftp.log")
-
+    #logfile = os.path.join(logdir, "GENSAM-upload_debug.log")
+    #logfile_sftp = os.path.join(logdir, "GENSAM-upload_debug_sftp.log")
 
     log = open(logfile, "a")
     log.write("----\n")
@@ -64,19 +72,21 @@ def main(runid, demultiplexdir, logdir, inputdir, samplesheetname, regioncode, l
     log.write(writelog("LOG", "Finding all files to upload."))
     
     for sample in samples:
-        #Find all fastq files to upload. Also count them
+        #Find all fastq files to upload.
         fastqpath = os.path.join(inputdir, runid, 'fastq')
         for fastqfile in glob.glob(fastqpath + "/" + sample + "*fastq.gz"):
             targetlink = os.readlink(fastqfile)
-            if targetlink.endswith("R1_001.fastq.gz"): #Fastq files need to have this extension right now
+            if targetlink.endswith("R1_001.fastq.gz"): #Fastq files need to have this extension right now. It's ugly
                 syncdict[sample]['fastq']['R1'] = targetlink
             elif targetlink.endswith("R2_001.fastq.gz"):
                 syncdict[sample]['fastq']['R2'] = targetlink
             else:
                 log.write(writelog("ERROR", "Found fastq file with ending other than R1(R2)_001.fastq.gz"))
+                if not no_mail:
+                    email_error(logfile, "FASTQ UPLOAD")
                 sys.exit("ERROR: Found fastq file with ending other than R1(R2)_001.fastq.gz")
         
-        #Find all fasta files to upload based on existing links. Also count them
+        #Find all fasta files to upload based on existing links.
         fastapath = os.path.join(inputdir, runid, 'fasta')
         for fastafile in glob.glob(fastapath + "/" + sample + "*consensus.fa"):
             targetlink = os.readlink(fastafile)
@@ -89,10 +99,14 @@ def main(runid, demultiplexdir, logdir, inputdir, samplesheetname, regioncode, l
         if syncdict[sample]['fastq']['R1']:
             if not syncdict[sample]['fastq']['R2']:
                 log.write(writelog("ERROR", "No R2 file found for " + syncdict[sample]['fastq']['R1'] + "."))
+                if not no_mail:
+                    email_error(logfile, "FASTQ PAIRING")
                 sys.exit("ERROR: No R2 file found for " + syncdict[sample]['fastq']['R1'] + ".")
         if syncdict[sample]['fastq']['R2']:
             if not syncdict[sample]['fastq']['R1']:
                 log.write(writelog("ERROR", "No R1 file found for " + syncdict[sample]['fastq']['R2'] + "."))
+                if not no_mail:
+                    email_error(logfile, "FASTQ PAIRING")
                 sys.exit("ERROR: No R1 file found for " + syncdict[sample]['fastq']['R2'] + ".")
 
     #Check how manny files there is to upload
@@ -104,12 +118,18 @@ def main(runid, demultiplexdir, logdir, inputdir, samplesheetname, regioncode, l
             log.write(writelog("LOG", "Found " + str(numfiles) + " " + filetype  + " files to upload."))
 
     #Open the connection to the sFTP
-    log.write(writelog("LOG", "Starting sFTP upload."))
+    if no_upload:
+        log.write(writelog("LOG", "No-upload flag set. Will just try the sFTP connection."))
+    else:
+        log.write(writelog("LOG", "Starting sFTP upload."))
+
     try:
         sftp = pysftp.Connection('seqstore.sahlgrenska.gu.se', username=sftpusername, password=sftppassword, log=logfile_sftp)
         sftp.chdir("shared/test_gensam")
     except:
         log.write(writelog("ERROR", "Establishing sFTP connection failed. Check the sFTP log @ " + logfile_sftp))
+        if not no_mail:
+            email_error(logfile, "sFTP CONNECTION")
         sys.exit("ERROR: Establishing sFTP connection failed. Check the sFTP log @ " + logfile_sftp)
 
     #Upload all files to the FOHM FTP
@@ -125,8 +145,9 @@ def main(runid, demultiplexdir, logdir, inputdir, samplesheetname, regioncode, l
             samplename_R2 = sample.replace("_", "-") + '_2.fastq.gz'
             fastqR2_trgt = '_'.join((regioncode, labcode, samplename_R2))
             #Upload to sFTP
-            sftp.put(fastqR1_src, fastqR1_trgt)
-            sftp.put(fastqR2_src, fastqR2_trgt)
+            if not no_upload:
+                sftp.put(fastqR1_src, fastqR1_trgt)
+                sftp.put(fastqR2_src, fastqR2_trgt)
             
         # Get all fasta files and construct correct names
         if syncdict[sample]['fasta']: #Check if sample has fastq files to upload
@@ -134,7 +155,8 @@ def main(runid, demultiplexdir, logdir, inputdir, samplesheetname, regioncode, l
             samplename_fasta = sample.replace("_", "-") + '.consensus.fasta'
             fasta_trgt = '_'.join((regioncode, labcode, samplename_fasta))
             #Upload to sFTP
-            sftp.put(fasta_src, fasta_trgt)
+            if not no_upload:
+                sftp.put(fasta_src, fasta_trgt)
 
 
     #Pangolin classification lineage file
@@ -143,17 +165,38 @@ def main(runid, demultiplexdir, logdir, inputdir, samplesheetname, regioncode, l
     
     lineagepath = os.path.join(inputdir, runid, 'lineage', runid + "_lineage_report_gensam.txt")
     lineage_trgt = '_'.join((regioncode, labcode, pango_date, "pangolin_classification.txt"))
-    sftp.put(lineagepath, lineage_trgt)
+    if not no_upload:
+        sftp.put(lineagepath, lineage_trgt)
 
     #Close the sFTP connection
     sftp.close()
-    log.write(writelog("LOG", "Finished the sFTP upload."))
+    if no_upload:
+        log.write(writelog("LOG", "Completed test of sFTP connection."))
+    else:
+        log.write(writelog("LOG", "Finished the sFTP upload."))
+
+    #Make an csv file with FOHM info
+    gensam_csv = os.path.join(gensamcsvdir, "_".join((regioncode,labcode,pango_date, "komplettering.csv")))
+    csvout = open(gensam_csv, "w")
+
+    csvout.write("provnummer,urvalskriterium,GISAID_accession\n")
+    for sample in samples:
+        csvout.write(','.join((sample, "-", "", "\n")))
+
+    #Send an e-mail to FOHM (and clinicalgenomics) that upload has happened
+    #csv file should be attached
+    if no_upload:
+        log.write(writelog("LOG", "No-upload flag set. Skipping mail to FOHM"))
+    elif no_mail:
+        log.write(writelog("LOG", "No-mail flag set. Skipping mail to FOHM"))
+    else:
+        email_fohm(gensam_csv)
 
     #Finished the workflow
     log.write(writelog("LOG", "Finished GENSAM upload workflow."))
     log.close()
 
-def checkinput(runid, demultiplexdir, inputdir, regioncode, labcode, logdir, samplesheetname, sspath):
+def checkinput(runid, demultiplexdir, inputdir, regioncode, labcode, logdir, samplesheetname, sspath, gensamcsvdir):
     #Make sure the samplesheet exists
     if not os.path.isfile(sspath):
         sys.exit("ERROR: Could not find SamleSheet @ " +  sspath)
@@ -186,6 +229,12 @@ def checkinput(runid, demultiplexdir, inputdir, regioncode, labcode, logdir, sam
     if not os.access(logdir, os.W_OK):
         sys.exit("ERROR: No write permissions in " + logdir + ".") 
 
+    #Check that the gensam dir for sotring csv files is there and accesible
+    if not os.path.exists(gensamcsvdir):
+        sys.exit("ERROR: Can not find " + gensamcsvdir + ". Perhaps you need to create it?")
+    if not os.access(gensamcsvdir, os.W_OK):
+        sys.exit("ERROR: No write permissions in " + gensamcsvdir + ".") 
+ 
 
 def sample_sheet(sspath):
     Sheet = SampleSheet(sspath)
@@ -211,6 +260,41 @@ def countkeys(dictname, group):
         if dictname[keys][group]:
             count += 1
     return count
-       
+
+def email_error(logloc, errorstep):
+    msg = EmailMessage()
+    msg.set_content("Errors were encountered during the automatic upload of samples to FOHM GENSAM.\n\n" +
+    "The error occured during: " + errorstep + "\n"
+    "Please check the log file @  " + logloc)
+
+    msg['Subject'] = "ERROR: GENSAM upload"
+    msg['From'] = "clinicalgenomics@gu.se"
+    msg['To'] = "anders.lind.cgg@gu.se"
+
+    #Send the messege
+    s = smtplib.SMTP('smtp.gu.se')
+    s.send_message(msg)
+    s.quit()
+
+def email_fohm(csvfile):
+    csv_filename = os.path.basename(csvfile)
+    
+    msg = EmailMessage()
+    msg.set_content("Bifogat är en lista över uppladdade prover.\n\nMed vänliga hälsningar,\n Clinical Genomics Göteborg")
+
+    msg['Subject'] = csv_filename
+    msg['From'] = "clinicalgenomics@gu.se"
+    msg['To'] = "anders.lind.cgg@gu.se"
+
+    # Add the attachment
+    with open(csvfile, 'rb') as f:
+        data = f.read()
+        msg.add_attachment(data, maintype='text', subtype='plain', filename=csv_filename)
+
+    #Send the messege
+    s = smtplib.SMTP('smtp.gu.se')
+    s.send_message(msg)
+    s.quit()
+
 if __name__ == '__main__':
     main()
