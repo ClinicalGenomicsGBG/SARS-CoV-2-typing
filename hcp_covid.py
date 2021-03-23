@@ -38,6 +38,15 @@ def check_files(args):
                 path_list.append(path)
         return path_list
 
+    if args.nextseq:
+        path_list = []
+        for path in glob.glob('/medstore/results/clinical/SARS-CoV-2-typing/nextseq_data/*/*/*', recursive=True):
+            st = os.stat(path)
+            mtime = dt.datetime.fromtimestamp(st.st_ctime)
+            if mtime > ago:
+                #print('%s modified %s'%(path, mtime))
+                path_list.append(path)
+        return path_list
 
 # List files that will be uploaded on the HCP.
 def files(args):
@@ -129,6 +138,9 @@ def arg():
     parser.add_argument("-i", "--direkttest", 
                             action="store_true", 
                             help="check for direkttest files automatically")
+    parser.add_argument("-n", "--nextseq", 
+                            action="store_true", 
+                            help="check for nextseq files automatically")
     args = parser.parse_args()
 
     return args
@@ -141,7 +153,7 @@ def main():
     hcpm = HCPManager(args.endpoint, args.aws_access_key_id, args.aws_secret_access_key)
     hcpm.attach_bucket(args.bucket)
 
-    if args.eurofins or args.direkttest:
+    if args.eurofins or args.direkttest or args.nextseq:
         files_pg = check_files(args)
         upload_fastq(args, files_pg, hcpm)
 
