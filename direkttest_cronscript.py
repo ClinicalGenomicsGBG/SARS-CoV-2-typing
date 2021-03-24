@@ -4,7 +4,6 @@ import argparse
 import openpyxl
 import pandas as pd
 import os
-import datetime as dt
 import fnmatch
 import glob
 from NGPinterface.hcp import HCPManager
