@@ -51,7 +51,6 @@ def main (logdir, dataloc, eurofinshost, username, password, no_mail, no_sync):
         lftpcommand = ['lftp', '-u', f'{username},{password}', f'{eurofinshost}:21',
                    "-e", f'mirror -vv / {dataloc};bye']
 
-    print(" ".join(lftpcommand))
     try:
         lftpresult = subprocess.run(lftpcommand)
         lftpresult.check_returncode()
