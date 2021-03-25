@@ -20,4 +20,4 @@ BASE=$(basename $FASTAIN)
 pangolin \
     -t 1 \
     $FASTAIN \
-    --outfile ${OUTDIR}/${RUNID}/${BASE%.primer*}_lineage_report.csv
+    --outfile ${OUTDIR}/${RUNID}/${BASE%.primer*}_lineage_report.txt
