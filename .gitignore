@@ -4,3 +4,5 @@ microbiology-reporter/test-lftp/
 eurofins-dl/conda-env/
 eurofins-dl/syncedFiles.txt
 conda-env/sars-cov-2-typing/
+eurofinsdl/scripts/__pycache__/
+tools/__pycache__/
