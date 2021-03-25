@@ -9,7 +9,7 @@ import glob
 from NGPinterface.hcp import HCPManager
 from tools import log 
 from tools.check_files import check_files
-
+from tools.direkttest_csv import csv_from_excel as csv_parse
 
 def arg():
     parser = argparse.ArgumentParser(prog="direkttest_cronscript.py")
@@ -32,8 +32,7 @@ def arg():
 @log.log_error("/medstore/logs/pipeline_logfiles/sars-cov-2-typing/direkttestwrapper_cronjob.log")
 def csv_from_excel(xlsx_path):
     for x in xlsx_path:
-        df = pd.DataFrame(pd.read_excel(x, engine='openpyxl')).fillna(value = "NULL")
-        df.to_csv(os.path.abspath(x).replace("xlsx","csv"), index=None, header=True)
+        csv_parse(x)
 
 
 # Upload files to HCP
