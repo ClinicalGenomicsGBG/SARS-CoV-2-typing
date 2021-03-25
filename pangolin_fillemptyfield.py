@@ -21,7 +21,6 @@ def arg():
 def check_files_eurofins():
     now = dt.datetime.now()
     ago = now-dt.timedelta(minutes=1440)
-#print(os.path.basename(os.path.dirname(path)))
 
     path_list = []
     for path in glob.glob('/medstore/results/clinical/SARS-CoV-2-typing/eurofins_data/goteborg/2021*/*', recursive=True):
@@ -37,7 +36,6 @@ def check_files_eurofins():
 def check_files_nextseq():
     now = dt.datetime.now()
     ago = now-dt.timedelta(minutes=1440)
-#print(os.path.basename(os.path.dirname(path)))
 
     path_list = []
     for path in glob.glob('/medstore/results/clinical/SARS-CoV-2-typing/nextseq_data/21*/lineage/*', recursive=True):
