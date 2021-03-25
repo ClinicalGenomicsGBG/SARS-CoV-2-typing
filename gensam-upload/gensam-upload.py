@@ -29,15 +29,20 @@ from email.message import EmailMessage
 @click.option('--labcode', required=True,
               default='SE300',
               help='FOHM lab code')
-@click.option('--sshkey', required=True,
-              help='Path to SSH key to use for sFTP connection')
 @click.option('-l', '--logdir', required=True,
               default='/medstore/logs/pipeline_logfiles/sars-cov-2-typing/GENSAM-upload',
               help='Path to directory where logs should be created')
+@click.option('--gensamhost', required=True,
+              default='gensam-sftp.folkhalsomyndigheten.se',
+              help='FOHM GENSAM hostname')
 @click.option('--sftpusername', required=True,
+              default='se300',
               help='Username to the GENSAM sFTP')
-@click.option('--sftppassword', required=True,
-              help='Password to the GENSAM sFTP')
+@click.option('--sshkey', required=True,
+              default='~/.ssh/id_rsa',
+              help='Path/to/private/sshkey')
+@click.option('--sshkey-password', required=True,
+              help='SSH key password')
 @click.option('-g', '--gensamcsvdir', required=True,
               default='/medstore/results/clinical/SARS-CoV-2-typing/nextseq_data/gensam_upload',
               help='Path to dir where GENSAM upload csv file should be saved')
@@ -45,8 +50,8 @@ from email.message import EmailMessage
               help="Set if you do NOT want e-mails to be sent")
 @click.option('--no-upload', is_flag=True,
               help="Set if you do NOT want to upload files to FOHM. Will still try to connect to the sFTP.")
-def main(runid, demultiplexdir, logdir, inputdir, samplesheetname, regioncode, 
-         labcode, sshkey, sftpusername, sftppassword, gensamcsvdir, no_mail, no_upload):
+def main(runid, demultiplexdir, logdir, inputdir, samplesheetname, regioncode, labcode, sshkey, 
+         sshkey_password, gensamhost, sftpusername, gensamcsvdir, no_mail, no_upload):
     #Get the path to samplesheet
     sspath = os.path.join(demultiplexdir, runid, samplesheetname)
 
@@ -124,8 +129,8 @@ def main(runid, demultiplexdir, logdir, inputdir, samplesheetname, regioncode,
         log.write(writelog("LOG", "Starting sFTP upload."))
 
     try:
-        sftp = pysftp.Connection('seqstore.sahlgrenska.gu.se', username=sftpusername, password=sftppassword, log=logfile_sftp)
-        sftp.chdir("shared/test_gensam")
+        sftp = pysftp.Connection(gensamhost, username=sftpusername, private_key=sshkey, private_key_pass=sshkey_password, log=logfile_sftp)
+        sftp.chdir("till-fohm")
     except:
         log.write(writelog("ERROR", "Establishing sFTP connection failed. Check the sFTP log @ " + logfile_sftp))
         if not no_mail:
