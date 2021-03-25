@@ -9,7 +9,7 @@ import datetime
 from NGPinterface.hcp import HCPManager
 from tools import log
 from tools.check_files import check_files
-from eurofinsdl.scripts.microReport import main as microreport
+from tools.microReport import eurofins as microreport
 from eurofinsdl.scripts.syncsftp import main as syncsftp
 
 def arg():
@@ -75,7 +75,11 @@ def pangolin(pangolin_path):
 @log.log_error("/medstore/logs/pipeline_logfiles/sars-cov-2-typing/eurofinswrapper_cronjob.log")
 # Sync pangolin files to micro sftp
 def micro_report():
-    microreport()
+    eurofinsdir = "/medstore/results/clinical/SARS-CoV-2-typing/eurofins_data/goteborg"
+    syncdir = "/seqstore/remote/outbox/sarscov2-micro/shared/eurofins"
+    syncedfiles = "/apps/bio/repos/sars-cov-2-typing/eurofinsdl/syncedFiles.txt"
+    logfile = "/medstore/logs/pipeline_logfiles/sars-cov-2-typing/microReport.log"
+    microreport(eurofinsdir, syncdir, syncedfiles, logfile)
 
 
 # Upload files and json to selected bucket on HCP.
