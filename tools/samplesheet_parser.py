@@ -15,9 +15,9 @@ def arg():
     args = parser.parse_args()
     return args
 
- 
-def sample_sheet(args):
-    Sheet = SampleSheet(args.filepath)
+# Parse input samplesheet
+def sample_sheet(path):
+    Sheet = SampleSheet(path)
     data = {}
     for sample in Sheet.samples:
         sample_name = sample['Sample_ID']
@@ -40,7 +40,8 @@ def sample_sheet(args):
 
 def main():
     args = arg()
-    sample_sheet(args)
+    path = args.filepath 
+    sample_sheet(path)
 
 
 if __name__ == "__main__":

@@ -4,11 +4,12 @@ import argparse
 import openpyxl
 import pandas as pd
 import os
-import datetime as dt
 import fnmatch
 import glob
 from NGPinterface.hcp import HCPManager
 from tools import log 
+from tools.check_files import check_files
+
 
 def arg():
     parser = argparse.ArgumentParser(prog="direkttest_cronscript.py")
@@ -26,32 +27,6 @@ def arg():
 
     return args
 
-
-# Check files automatically
-@log.log_error("/medstore/logs/pipeline_logfiles/sars-cov-2-typing/direkttestwrapper_cronjob.log")
-def check_files():
-    now = dt.datetime.now()
-    ago = now-dt.timedelta(minutes=1440)
-
-    # Direkttest xlsx files to convert
-    xlsx_list = []
-    for path in glob.glob('/medstore/results/clinical/SARS-CoV-2-typing/direkttest/direkttest_*.xlsx', recursive=True):
-        st = os.stat(path)
-        mtime = dt.datetime.fromtimestamp(st.st_ctime)
-        if mtime > ago:
-            #print('%s modified %s'%(path, mtime))
-            xlsx_list.append(path)
-
-    # Direkttest files for upload to HCP
-    path_list = []
-    for path in glob.glob('/medstore/results/clinical/SARS-CoV-2-typing/direkttest/*', recursive=True):
-        st = os.stat(path)
-        mtime = dt.datetime.fromtimestamp(st.st_ctime)
-        if mtime > ago:
-            #print('%s modified %s'%(path, mtime))
-            path_list.append(path)
-    return xlsx_list,path_list
- 
 
 # Convert xlsx to csv and fill empty cells with NULL
 @log.log_error("/medstore/logs/pipeline_logfiles/sars-cov-2-typing/direkttestwrapper_cronjob.log")
@@ -78,9 +53,13 @@ def main():
     hcpm = HCPManager(args.endpoint, args.aws_access_key_id, args.aws_secret_access_key)
     hcpm.attach_bucket(args.bucket)
 
-    xlsx_path, files_pg = check_files()
+    # Find files using check_files module
+    xlsx_path = check_files("/medstore/results/clinical/SARS-CoV-2-typing/direkttest/direkttest_*.xlsx")
+    files_pg = check_files("/medstore/results/clinical/SARS-CoV-2-typing/direkttest/*")
+    
+    # Convert xlsx files and upload to HCP
     csv_from_excel(xlsx_path)
-    upload_fastq(files_pg, hcpm)    
+    upload_fastq(files_pg,hcpm)    
 
 
 if __name__ == "__main__":
