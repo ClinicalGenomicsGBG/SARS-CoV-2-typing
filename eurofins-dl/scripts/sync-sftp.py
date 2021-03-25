@@ -10,7 +10,6 @@ from email.message import EmailMessage
 import subprocess
 import glob
 
-#### Don't forget to change dataloc
 @click.command()
 @click.option('--logdir', required=True,
               default='/medstore/logs/pipeline_logfiles/sars-cov-2-typing/eurofins-sftp',
@@ -28,7 +27,7 @@ import glob
 @click.option('--no-mail', is_flag=True,
               help="Set if you do NOT want e-mails to be sent")
 @click.option('--no-sync', is_flag=True,
-              help="Set if you do NOT want sync files, just test the FTP connection")
+              help="Set if you do NOT want to sync files, just test the FTP connection")
 
 def main (logdir, dataloc, eurofinshost, username, password, no_mail, no_sync):
     #Run checks on all given inputs
@@ -62,7 +61,8 @@ def main (logdir, dataloc, eurofinshost, username, password, no_mail, no_sync):
             logger.info('Completed FTP sync.')
     except:
         logger.error('FTP sync failed.')
-        email_error(logfile, "FTP SYNC")
+        if not no_mail:
+            email_error(logfile, "FTP SYNC")
         sys.exit('ERROR: FTP sync failed.')
 
     #Check the new md5sums which was downloaded
@@ -80,8 +80,12 @@ def main (logdir, dataloc, eurofinshost, username, password, no_mail, no_sync):
             logger.info(f'All MD5 sums correct for files in {md5dir}.')
         except:
             logger.error(f'Incorrect MD5 sum found in {md5file}.')
-            email_error(logfile, "MD5 SUM CHECK")
+            if not no_mail:
+                email_error(logfile, "MD5 SUM CHECK")
             sys.exit(f'ERROR: Incorrect md5 sum found in {md5file}.')
+
+    # Finish workflow
+    logger.info('Finished the FTP sync workflow')
     
 def checkinput(logdir, dataloc):
     #Check that the logdir is there and accesible
@@ -103,7 +107,6 @@ def get_md5files(now, dataloc):
         st = os.stat(path)
         mtime = datetime.datetime.fromtimestamp(st.st_ctime)
         if mtime > ago:
-            #print('%s modified %s'%(path, mtime))
             path_list.append(path)
     return path_list
     
@@ -133,7 +136,7 @@ def email_error(logloc, errorstep):
 
     msg['Subject'] = "ERROR: Eurofins sFTP sync"
     msg['From'] = "clinicalgenomics@gu.se"
-    msg['To'] = "anders.lind.cgg@gu.se"
+    msg['To'] = "clinicalgenomics@gu.se"
 
     #Send the messege
     s = smtplib.SMTP('smtp.gu.se')
