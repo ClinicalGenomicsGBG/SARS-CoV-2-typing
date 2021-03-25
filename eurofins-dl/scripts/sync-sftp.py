@@ -13,13 +13,13 @@ import glob
 @click.command()
 @click.option('--logdir', required=True,
               default='/medstore/logs/pipeline_logfiles/sars-cov-2-typing/eurofins-sftp',
-              help='Path/to/logfile/directory')
+              help='Path/to/logfile/directory, uses default if path not specified')
 @click.option('--dataloc', required=True,
               default='/medstore/results/clinical/SARS-CoV-2-typing/eurofins_data/goteborg',
-              help='Path/to/data-storage/directory')
+              help='Path/to/data-storage/directory, uses default if path not specified')
 @click.option('--eurofinshost', required=True,
               default='ftp.gatc-biotech.com',
-              help='Eurofins FTP hostname')
+              help='Eurofins FTP hostname, uses default if not specified')
 @click.option('-u', '--username', required=True,
               help='Eurofins FTP username')
 @click.option('-p', '--password', required=True,
