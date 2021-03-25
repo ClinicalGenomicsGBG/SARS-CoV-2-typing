@@ -9,3 +9,4 @@ dependencies:
   - openpyxl==2.6.3
   - sample-sheet
   - pysftp
+  - pandas
