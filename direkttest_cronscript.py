@@ -77,7 +77,7 @@ def main():
 
     #Set up the logfile
     now = datetime.datetime.now()
-    logfile = os.path.join("/medstore/logs/pipeline_logfiles/sars-cov-2-typing/HCP_upload/", "HCP_upload_" + now.strftime("%y%m%d_%H%M%S") + ".log")
+    logfile = os.path.join("/medstore/logs/pipeline_logfiles/sars-cov-2-typing/HCP_upload/", "HCP_upload_direkttest" + now.strftime("%y%m%d_%H%M%S") + ".log")
     logger = setup_logger('hcp_log', logfile)
 
     # Connect to HCP
