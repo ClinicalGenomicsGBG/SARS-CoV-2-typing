@@ -32,6 +32,24 @@ def arg():
     return args
 
 
+def setup_logger(name, log_path=None):
+    logger = logging.getLogger(name)
+    logger.setLevel(logging.DEBUG)
+
+    stream_handle = logging.StreamHandler()
+    stream_handle.setLevel(logging.DEBUG)
+    stream_handle.setFormatter(logging.Formatter('%(asctime)s - %(levelname)s - %(message)s'))
+    logger.addHandler(stream_handle)
+
+    if log_path:
+        file_handle = logging.FileHandler(log_path, 'a')
+        file_handle.setLevel(logging.DEBUG)
+        file_handle.setFormatter(logging.Formatter('%(asctime)s - %(levelname)s - %(message)s'))
+        logger.addHandler(file_handle)
+
+    return logger
+
+
 @log.log_error("/medstore/logs/pipeline_logfiles/sars-cov-2-typing/eurofinswrapper_cronjob.log")
 # Sync eurofins data
 def sync_sftp(args):
@@ -60,7 +78,7 @@ def micro_report(micro_paths):
 
 
 # Upload files and json to selected bucket on HCP.
-def upload_fastq(hcp_paths,hcpm):
+def upload_fastq(hcp_paths,hcpm,logger):
     for file_pg in hcp_paths:
         if "md5sums.txt" in file_pg or file_pg.endswith("classification.txt"):
             continue
@@ -97,7 +115,7 @@ def main():
 
     # Find eurofins files and upload to HCP
     hcp_paths = check_files("/medstore/results/clinical/SARS-CoV-2-typing/eurofins_data/goteborg/2021*/*")
-    upload_fastq(hcp_paths,hcpm)
+    upload_fastq(hcp_paths,hcpm,logger)
 
 
 if __name__ == "__main__":
