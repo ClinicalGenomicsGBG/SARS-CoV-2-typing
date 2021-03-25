@@ -6,6 +6,7 @@ import pandas as pd
 import fnmatch
 import logging
 import datetime
+from NGPinterface.hcp import HCPManager
 from tools import log
 from tools.check_files import check_files
 from eurofinsdl.scripts.microReport import main as microreport
