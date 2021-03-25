@@ -68,9 +68,9 @@ def upload_fastq(hcp_paths,hcpm):
             try:
                  hcpm.upload_file(file_pg, "covid-wgs/"+os.path.basename(file_pg))
                  logger.info(f"uploading: {file_pg}")
-             except Exception as e:
-                 logger.error(e)
-                 continue
+            except Exception as e:
+                logger.error(e)
+                continue
 
     
 def main():
