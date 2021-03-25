@@ -64,8 +64,8 @@ def sync_sftp(args):
 
 @log.log_error("/medstore/logs/pipeline_logfiles/sars-cov-2-typing/eurofinswrapper_cronjob.log")
 # Fix pangolin by filling empty fields with NULL
-def pangolin():
-    for f in path_list:
+def pangolin(pangolin_path):
+    for f in pangolin_path:
         if fnmatch.fnmatch(os.path.basename(f), "*_pangolin_lineage_classification.txt"): 
             print("updating: " + f)
             df = pd.DataFrame(pd.read_csv(f, sep="\t")).fillna(value = "NULL")
@@ -74,7 +74,7 @@ def pangolin():
 
 @log.log_error("/medstore/logs/pipeline_logfiles/sars-cov-2-typing/eurofinswrapper_cronjob.log")
 # Sync pangolin files to micro sftp
-def micro_report(micro_paths):
+def micro_report():
     microreport()
 
 
