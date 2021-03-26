@@ -36,7 +36,7 @@ def clc(password,run,server,port,user):
                                                     "-U", user, 
                                                     "-W", password, 
                                                     "-G", "clinical-production", 
-                                                    "-A", "import" 
+                                                    "-A", "import", 
                                                     "-f", "fasta", 
                                                     "-s", f"clc://serverfile/{path}", 
                                                     "-d", f"clc://server/CLC_Data_Folders/Microbiology/SARS-CoV-2_Clinical/Illumina/{run}"]
