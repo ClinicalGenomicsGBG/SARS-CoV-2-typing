@@ -50,17 +50,21 @@ import csv
               help='Path to dir where GENSAM upload csv file should be saved')
 @click.option('--manualcsv',
               help='Manually specify a CSV file to upload to GENSAM with samples and info. Also used to specify which samples to upload')
+@click.option('--uploadedsamples',
+              default='/medstore/results/clinical/SARS-CoV-2-typing/nextseq_data/gensam_upload/uploaded2gensam.txt',
+              help='File containing already uploaded samples.')
 @click.option('--no-mail', is_flag=True,
               help="Set if you do NOT want e-mails to be sent")
 @click.option('--no-upload', is_flag=True,
               help="Set if you do NOT want to upload files to FOHM. Will still try to connect to the sFTP.")
 def main(runid, demultiplexdir, logdir, inputdir, samplesheetname, regioncode, labcode, sshkey, 
-         sshkey_password, gensamhost, sftpusername, gensamcsvdir, manualcsv, no_mail, no_upload):
+         sshkey_password, gensamhost, sftpusername, gensamcsvdir, manualcsv, uploadedsamples, no_mail, no_upload):
     #Get the path to samplesheet
     sspath = os.path.join(demultiplexdir, runid, samplesheetname)
 
     #Run checks on all given inputs
-    checkinput(runid, demultiplexdir, inputdir, regioncode, labcode, logdir, samplesheetname, sspath, gensamcsvdir, manualcsv)
+    checkinput(runid, demultiplexdir, inputdir, regioncode, labcode, logdir, 
+               samplesheetname, sspath, gensamcsvdir, manualcsv, uploadedsamples)
     
     # Start the logging
     now = datetime.datetime.now()
@@ -126,7 +130,6 @@ def main(runid, demultiplexdir, logdir, inputdir, samplesheetname, regioncode, l
         else:
             log.write(writelog("LOG", "Found " + str(numfiles) + " " + filetype  + " files to upload."))
 
-            
     #Make an csv file with FOHM info
     #Also store all samples from this file in a list
     gensamcsv_samples = []
@@ -183,10 +186,27 @@ def main(runid, demultiplexdir, logdir, inputdir, samplesheetname, regioncode, l
         sys.exit("ERROR: Establishing sFTP connection failed. Check the sFTP log @ " + logfile_sftp)
 
     #Upload all files to the FOHM FTP
+    #Read in all files previously uploaded. Perhaps there is a faster, indexwed way?
+    uploads_dict = {}
+    with open(uploadedsamples) as csv_file:
+            csv_reader = csv.reader(csv_file, delimiter=',')
+            for row in csv_reader:
+            #add sample names to dict
+                uploads_dict[row[0]] = ''
+
+    #Open file with previously uploaded files for writing
+    uploads_samples = open(uploadedsamples, "a")
+
     #fastq and fasta file
     for sample in syncdict:
         #Skip sample if not in the gensamcsv file. Only really matters if there is a manually supplied csv file
         if not sample in gensamcsv_samples:
+            log.write(writelog("WARNING", f'Sample {sample} not found in {os.path.basename(gensam_csv)}, skipping.'))
+            continue
+
+        #Is sample already uploaded (and no-upload flag not set)? If so, skip
+        if sample in uploads_dict:
+            log.write(writelog("WARNING", f'Sample {sample} found in file of previously uploaded samples @ {uploadedsamples}. Skipping it.'))
             continue
 
         #Get all fastq files and construct correct names
@@ -202,7 +222,7 @@ def main(runid, demultiplexdir, logdir, inputdir, samplesheetname, regioncode, l
             if not no_upload:
                 sftp.put(fastqR1_src, fastqR1_trgt)
                 sftp.put(fastqR2_src, fastqR2_trgt)
-            
+                                
         # Get all fasta files and construct correct names
         if syncdict[sample]['fasta']: #Check if sample has fastq files to upload
             fasta_src = syncdict[sample]['fasta']
@@ -212,6 +232,10 @@ def main(runid, demultiplexdir, logdir, inputdir, samplesheetname, regioncode, l
             if not no_upload:
                 sftp.put(fasta_src, fasta_trgt)
 
+        #Save sample name in uploaded samples file unless
+        if not no_upload:
+            uploads_samples.write(f'{sample}\n')
+
 
     #Pangolin classification lineage file    
     lineagepath = os.path.join(inputdir, runid, 'lineage', runid + "_lineage_report_gensam.txt")
@@ -219,8 +243,12 @@ def main(runid, demultiplexdir, logdir, inputdir, samplesheetname, regioncode, l
     if not no_upload:
         sftp.put(lineagepath, lineage_trgt)
 
+    #Close the uploaded samples file
+    uploads_samples.close()
+
     #Close the sFTP connection
     sftp.close()
+
     if no_upload:
         log.write(writelog("LOG", "Completed test of sFTP connection."))
     else:
@@ -239,7 +267,8 @@ def main(runid, demultiplexdir, logdir, inputdir, samplesheetname, regioncode, l
     log.write(writelog("LOG", "Finished GENSAM upload workflow."))
     log.close()
 
-def checkinput(runid, demultiplexdir, inputdir, regioncode, labcode, logdir, samplesheetname, sspath, gensamcsvdir, manualcsv):
+def checkinput(runid, demultiplexdir, inputdir, regioncode, labcode, logdir, 
+               samplesheetname, sspath, gensamcsvdir, manualcsv, uploadedsamples):
     #Make sure the samplesheet exists
     if not os.path.isfile(sspath):
         sys.exit("ERROR: Could not find SamleSheet @ " +  sspath)
@@ -247,6 +276,10 @@ def checkinput(runid, demultiplexdir, inputdir, regioncode, labcode, logdir, sam
     #If there is a manual GENSAM csv file. Check that it eists
     if manualcsv and not os.path.isfile(manualcsv):
         sys.exit("ERROR: The specified manual GENSAM CSV file does not seem to exist @ " +  os.path.abspath(manualcsv))
+
+    #Check file containing previously uploaded samples.
+    if not os.path.isfile(uploadedsamples):
+        sys.exit("ERROR: Can't find file containing previously not uploaded sample @ " +  uploadedsamples)
 
     #Check for all fasta, fastq and lineage directories are in place
     for dirname in ("fastq", "fasta", "lineage"):
