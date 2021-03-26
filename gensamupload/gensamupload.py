@@ -59,12 +59,10 @@ import csv
               help="Set if you do NOT want to upload files to FOHM. Will still try to connect to the sFTP.")
 def main(runid, demultiplexdir, logdir, inputdir, samplesheetname, regioncode, labcode, sshkey, 
          sshkey_password, gensamhost, sftpusername, gensamcsvdir, manualcsv, uploadedsamples, no_mail, no_upload):
-    #Get the path to samplesheet
-    sspath = os.path.join(demultiplexdir, runid, samplesheetname)
 
     #Run checks on all given inputs
     checkinput(runid, demultiplexdir, inputdir, regioncode, labcode, logdir, 
-               samplesheetname, sspath, gensamcsvdir, manualcsv, uploadedsamples)
+               samplesheetname, gensamcsvdir, manualcsv, uploadedsamples)
     
     # Start the logging
     now = datetime.datetime.now()
@@ -77,6 +75,8 @@ def main(runid, demultiplexdir, logdir, inputdir, samplesheetname, regioncode, l
     log.write("----\n")
     log.write(writelog("LOG", "Starting GENSAM upload workflow"))
  
+    #Get the path to samplesheet
+    sspath = os.path.join(demultiplexdir, runid, samplesheetname)
     #Read in all sampleIDs
     samples = sample_sheet(sspath)
 
@@ -268,8 +268,9 @@ def main(runid, demultiplexdir, logdir, inputdir, samplesheetname, regioncode, l
     log.close()
 
 def checkinput(runid, demultiplexdir, inputdir, regioncode, labcode, logdir, 
-               samplesheetname, sspath, gensamcsvdir, manualcsv, uploadedsamples):
+               samplesheetname, gensamcsvdir, manualcsv, uploadedsamples):
     #Make sure the samplesheet exists
+    sspath = os.path.join(demultiplexdir, runid, samplesheetname)
     if not os.path.isfile(sspath):
         sys.exit("ERROR: Could not find SamleSheet @ " +  sspath)
 
@@ -309,7 +310,7 @@ def checkinput(runid, demultiplexdir, inputdir, regioncode, labcode, logdir,
     if not os.access(logdir, os.W_OK):
         sys.exit("ERROR: No write permissions in " + logdir + ".") 
 
-    #Check that the gensam dir for sotring csv files is there and accesible
+    #Check that the gensam dir for sorting csv files is there and accesible
     if not os.path.exists(gensamcsvdir):
         sys.exit("ERROR: Can not find " + gensamcsvdir + ". Perhaps you need to create it?")
     if not os.access(gensamcsvdir, os.W_OK):
