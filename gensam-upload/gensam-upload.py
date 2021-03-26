@@ -10,6 +10,8 @@ from collections import defaultdict
 import pysftp
 import smtplib
 from email.message import EmailMessage
+from shutil import copyfile
+import csv
 
 @click.command()
 @click.option('-r', '--runid', required=True,
@@ -46,17 +48,19 @@ from email.message import EmailMessage
 @click.option('-g', '--gensamcsvdir', required=True,
               default='/medstore/results/clinical/SARS-CoV-2-typing/nextseq_data/gensam_upload',
               help='Path to dir where GENSAM upload csv file should be saved')
+@click.option('--manualcsv',
+              help='Manually specify a CSV file to upload to GENSAM with samples and info. Also used to specify which samples to upload')
 @click.option('--no-mail', is_flag=True,
               help="Set if you do NOT want e-mails to be sent")
 @click.option('--no-upload', is_flag=True,
               help="Set if you do NOT want to upload files to FOHM. Will still try to connect to the sFTP.")
 def main(runid, demultiplexdir, logdir, inputdir, samplesheetname, regioncode, labcode, sshkey, 
-         sshkey_password, gensamhost, sftpusername, gensamcsvdir, no_mail, no_upload):
+         sshkey_password, gensamhost, sftpusername, gensamcsvdir, manualcsv, no_mail, no_upload):
     #Get the path to samplesheet
     sspath = os.path.join(demultiplexdir, runid, samplesheetname)
 
     #Run checks on all given inputs
-    checkinput(runid, demultiplexdir, inputdir, regioncode, labcode, logdir, samplesheetname, sspath, gensamcsvdir)
+    checkinput(runid, demultiplexdir, inputdir, regioncode, labcode, logdir, samplesheetname, sspath, gensamcsvdir, manualcsv)
     
     # Start the logging
     now = datetime.datetime.now()
@@ -122,6 +126,47 @@ def main(runid, demultiplexdir, logdir, inputdir, samplesheetname, regioncode, l
         else:
             log.write(writelog("LOG", "Found " + str(numfiles) + " " + filetype  + " files to upload."))
 
+            
+    #Make an csv file with FOHM info
+    #Also store all samples from this file in a list
+    gensamcsv_samples = []
+    date_simple = now.strftime("%Y-%m-%d")
+    if manualcsv:
+        #check if the specified file is in correct place
+        gensam_csv = os.path.join(gensamcsvdir, "_".join((regioncode,labcode,date_simple, "komplettering.csv")))
+        if os.path.abspath(manualcsv) == gensam_csv:
+            log.write(writelog("LOG", "The provided GENSAM csv file seem to be in correct place. Will use it as is."))
+        else:
+            log.write(writelog("LOG", "Copying the provided GENSAM csv file to " + gensamcsvdir))
+            try:
+                copyfile(manualcsv, gensamdir)
+            except:
+                log.write(writelog("ERROR", "Could not copy the provided GENSAM csv file to " + gensamcsvdir))
+        
+        gensam_csv = manualcsv
+
+        #Load in the samples from the file
+        with open(gensam_csv) as csv_file:
+            csv_reader = csv.reader(csv_file, delimiter=',')
+            for row in csv_reader:
+                #skip header
+                if row[0].startswith('provnummer'):
+                    continue
+
+                #add sample names to list
+                gensamcsv_samples.append(row[0])
+                
+
+    else:
+        gensam_csv = os.path.join(gensamcsvdir, "_".join((regioncode,labcode,date_simple, "komplettering.csv")))
+        csvout = open(gensam_csv, "w")
+
+        csvout.write("provnummer,urvalskriterium,GISAID_accession\n")
+        for sample in samples:
+            csvout.write(','.join((sample, "-", "", "\n")))
+            gensamcsv_samples.append(sample)
+            log.write(writelog("LOG", "Wrote GENSAM .csv file to : " + gensam_csv))
+            
     #Open the connection to the sFTP
     if no_upload:
         log.write(writelog("LOG", "No-upload flag set. Will just try the sFTP connection."))
@@ -140,6 +185,10 @@ def main(runid, demultiplexdir, logdir, inputdir, samplesheetname, regioncode, l
     #Upload all files to the FOHM FTP
     #fastq and fasta file
     for sample in syncdict:
+        #Skip sample if not in the gensamcsv file. Only really matters if there is a manually supplied csv file
+        if not sample in gensamcsv_samples:
+            continue
+
         #Get all fastq files and construct correct names
         if syncdict[sample]['fastq']['R1']: #Check if sample has fastq files to upload
             fastqR1_src = syncdict[sample]['fastq']['R1']
@@ -164,12 +213,9 @@ def main(runid, demultiplexdir, logdir, inputdir, samplesheetname, regioncode, l
                 sftp.put(fasta_src, fasta_trgt)
 
 
-    #Pangolin classification lineage file
-    pango_now = datetime.datetime.now()
-    pango_date = pango_now.strftime("%Y-%m-%d")
-    
+    #Pangolin classification lineage file    
     lineagepath = os.path.join(inputdir, runid, 'lineage', runid + "_lineage_report_gensam.txt")
-    lineage_trgt = '_'.join((regioncode, labcode, pango_date, "pangolin_classification.txt"))
+    lineage_trgt = '_'.join((regioncode, labcode, date_simple, "pangolin_classification.txt"))
     if not no_upload:
         sftp.put(lineagepath, lineage_trgt)
 
@@ -179,14 +225,6 @@ def main(runid, demultiplexdir, logdir, inputdir, samplesheetname, regioncode, l
         log.write(writelog("LOG", "Completed test of sFTP connection."))
     else:
         log.write(writelog("LOG", "Finished the sFTP upload."))
-
-    #Make an csv file with FOHM info
-    gensam_csv = os.path.join(gensamcsvdir, "_".join((regioncode,labcode,pango_date, "komplettering.csv")))
-    csvout = open(gensam_csv, "w")
-
-    csvout.write("provnummer,urvalskriterium,GISAID_accession\n")
-    for sample in samples:
-        csvout.write(','.join((sample, "-", "", "\n")))
 
     #Send an e-mail to FOHM (and clinicalgenomics) that upload has happened
     #csv file should be attached
@@ -201,10 +239,14 @@ def main(runid, demultiplexdir, logdir, inputdir, samplesheetname, regioncode, l
     log.write(writelog("LOG", "Finished GENSAM upload workflow."))
     log.close()
 
-def checkinput(runid, demultiplexdir, inputdir, regioncode, labcode, logdir, samplesheetname, sspath, gensamcsvdir):
+def checkinput(runid, demultiplexdir, inputdir, regioncode, labcode, logdir, samplesheetname, sspath, gensamcsvdir, manualcsv):
     #Make sure the samplesheet exists
     if not os.path.isfile(sspath):
         sys.exit("ERROR: Could not find SamleSheet @ " +  sspath)
+
+    #If there is a manual GENSAM csv file. Check that it eists
+    if manualcsv and not os.path.isfile(manualcsv):
+        sys.exit("ERROR: The specified manual GENSAM CSV file does not seem to exist @ " +  os.path.abspath(manualcsv))
 
     #Check for all fasta, fastq and lineage directories are in place
     for dirname in ("fastq", "fasta", "lineage"):
@@ -274,7 +316,7 @@ def email_error(logloc, errorstep):
 
     msg['Subject'] = "ERROR: GENSAM upload"
     msg['From'] = "clinicalgenomics@gu.se"
-    msg['To'] = "anders.lind.cgg@gu.se"
+    msg['To'] = "clinicalgenomics@gu.se"
 
     #Send the messege
     s = smtplib.SMTP('smtp.gu.se')
@@ -289,7 +331,8 @@ def email_fohm(csvfile):
 
     msg['Subject'] = csv_filename
     msg['From'] = "clinicalgenomics@gu.se"
-    msg['To'] = "anders.lind.cgg@gu.se"
+    msg['To'] = "gensam@folkhalsomyndigheten.se"
+    msg['Cc'] = "clinicalgenomics@gu.se"
 
     # Add the attachment
     with open(csvfile, 'rb') as f:
