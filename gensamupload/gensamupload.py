@@ -322,6 +322,14 @@ def sample_sheet(sspath):
     data = []
     for sample in Sheet.samples:
         sample_name = sample['Sample_Name']
+        sample_description = sample['Description']
+        
+        #Skip samples set to runType = 01 (desc. field 3)
+        #These are samples which have been re-sequenced, so they have already been uploaded to GENSAM.
+        runtype = sample_description.split("_")[2]
+        if runtype == '01':
+            continue
+
         #Skip controls
         if sample_name.startswith(('NegCtrl', 'PosCtrl', 'PosKon', 'NegKon')):
             continue
