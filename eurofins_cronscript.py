@@ -10,7 +10,7 @@ from NGPinterface.hcp import HCPManager
 from tools import log
 from tools.check_files import check_files
 from tools.microReport import eurofins as microreport
-from eurofinsdl.scripts.syncsftp import main as syncsftp
+from tools.syncsftp import main as syncsftp
 
 def arg():
     parser = argparse.ArgumentParser(prog="direkttest_cronscript.py")
