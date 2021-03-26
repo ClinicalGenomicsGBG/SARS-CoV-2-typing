@@ -112,7 +112,7 @@ def main():
     sync_sftp(args)
     
     # Find panoling files and add NULL to empty fields
-    pangolin_path = check_files("/medstore/results/clinical/SARS-CoV-2-typing/eurofins_data/2*/*_pangolin_lineage_classification.txt")
+    pangolin_path = check_files("/medstore/results/clinical/SARS-CoV-2-typing/eurofins_data/goteborg/2*/*_pangolin_lineage_classification.txt")
     pangolin(pangolin_path)
 
     # Find pangolin files and sync to micro
