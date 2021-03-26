@@ -56,7 +56,6 @@ def csv_from_excel(xlsx_path):
 
 
 # Upload files to HCP
-@log.log_error("/medstore/logs/pipeline_logfiles/sars-cov-2-typing/direkttestwrapper_cronjob.log")
 def upload_fastq(files_pg, hcpm, logger):
     for file_pg in files_pg:
         try:
@@ -65,12 +64,7 @@ def upload_fastq(files_pg, hcpm, logger):
         except Exception as e:
             logger.error(e)
             continue
-        #if hcpm.upload_file(file_pg, "covid-wgs/"+os.path.basename(file_pg)) is None:
-        #    print(f"uploading: {file_pg}")
            
-        #else:
-        #    continue
-
 
 def main():
     args= arg()
