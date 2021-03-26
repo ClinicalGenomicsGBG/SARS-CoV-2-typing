@@ -12,11 +12,13 @@ import os
 def arg():
     parser = argparse.ArgumentParser(prog="samplesheet_parser.py")
     parser.add_argument("-f", "--filepath", help="path to samplesheet file to parse")
+    parser.add_argument("-r", "--run", help="runid")
     args = parser.parse_args()
     return args
 
+
 # Parse input samplesheet
-def sample_sheet(path):
+def sample_sheet(path,run):
     Sheet = SampleSheet(path)
     data = {}
     for sample in Sheet.samples:
@@ -35,13 +37,14 @@ def sample_sheet(path):
             'ct_value': description.split("_")[7]
         })
 
-    with open((os.path.basename(args.filepath)).replace("csv","json"), 'w') as outfile:
+    with open(f"/medstore/results/clinical/SARS-CoV-2-typing/nextseq_data/{run}/metadata/{run}_metadata.json", 'w') as outfile:
         json.dump(data, outfile,indent=4)
 
 def main():
     args = arg()
     path = args.filepath 
-    sample_sheet(path)
+    run = args.run
+    sample_sheet(path,run)
 
 
 if __name__ == "__main__":
