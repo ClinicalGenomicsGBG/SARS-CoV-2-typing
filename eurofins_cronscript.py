@@ -59,7 +59,7 @@ def sync_sftp(args):
     eurofinshost = "ftp.gatc-biotech.com"
     username = args.username
     password = args.password
-    syncsftp(logdir, dataloc, eurofinshost, username, password)
+    syncsftp(logdir, dataloc, eurofinshost, username, password, no_mail=False, no_sync=False)
 
 
 @log.log_error("/medstore/logs/pipeline_logfiles/sars-cov-2-typing/eurofinswrapper_cronjob.log")
