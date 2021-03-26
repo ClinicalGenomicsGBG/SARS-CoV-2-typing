@@ -10,7 +10,7 @@ from NGPinterface.hcp import HCPManager
 from tools.samplesheet_parser import sample_sheet
 from tools.check_files import check_files
 from tools import log
-from tools.microReport import eurofins as microreport
+from tools.microReport import nextseq as microreport
 from tools.clc_sync import clc
 
 
@@ -131,12 +131,12 @@ def main():
     pangolin_path = check_files("/medstore/results/clinical/SARS-CoV-2-typing/nextseq_data/21*/lineage/*")
     pangolin(pangolin_path)
 
+    # Sync pangolin and artic files to micro sftp
+    micro_report()
+
     # Parse nextseq samplesheet for metadata
     samplesheet_path = check_files("/seqstore/instruments/nextseq_500175_gc/Demultiplexdir/{run}/SampleSheet.csv")
     samplesheet_parser(samplesheet_path)
-
-    # Sync pangolin and artic files to micro sftp
-    micro_report()
 
     # Import consensus fasta files to CLC
     clc_sync(args.password, run)
