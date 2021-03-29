@@ -10,6 +10,8 @@ import smtplib
 from email.message import EmailMessage
 import logging
 from collections import defaultdict
+import csv
+import pysftp
 
 @click.command()
 @click.option('-d', '--datadir', required=True,
@@ -24,9 +26,21 @@ from collections import defaultdict
 @click.option('--labcode', required=True,
               default='SE300',
               help='FOHM lab code. Default is SE300')
+@click.option('--gensamhost', required=True,
+              default='gensam-sftp.folkhalsomyndigheten.se',
+              help='FOHM GENSAM hostname')
+@click.option('--sftpusername', required=True,
+              default='se300',
+              help='Username to the GENSAM sFTP')
+@click.option('--sshkey', required=True,
+              default='~/.ssh/id_rsa',
+              help='Path/to/private/sshkey')
+@click.option('--sshkey-password', required=True,
+              help='SSH key password')
 @click.option('--no-mail', is_flag=True,
               help="Set if you do NOT want e-mails to be sent")
-def main (datadir, logdir, regioncode, labcode, no_mail):
+def main (datadir, logdir, regioncode, labcode, gensamhost, 
+          sftpusername, sshkey, sshkey_password, no_mail):
 
     #Run checks on all given inputs
     checkinput(datadir, logdir, regioncode, labcode)
@@ -35,25 +49,73 @@ def main (datadir, logdir, regioncode, labcode, no_mail):
     now = datetime.datetime.now()
     logfile = os.path.join(logdir, "micro-GENSAM-upload_" + now.strftime("%y%m%d_%H%M%S") + ".log")
     logger = setup_logger('micro_gensam', logfile)
+    #Separate log for sFTP connection. Should be merged into the same. ToDo
+    logfile_sftp = os.path.join(logdir, "GENSAM-upload_" + now.strftime("%y%m%d_%H%M%S") + "_sFTP.log")
 
     #Start the workflow
     logger.info("Starting the microbiology GENSAM-upload workflow.")
 
     #Find all the relevant files in the datadir. Makes sure everything is there
+    logger.info(f'Finding all files to upload @ {datadir}')
     try:
         syncfiles = collect_files(datadir, regioncode, labcode)
     except Exception as e:
         logger.error(e)
+        if not no_mail:
+            email_error(logfile, "FIND FILES")
         sys.exit()
 
-    #Go over the csv file and make sure there are fastq, fasta and variants for each sample
-    
+    #Make sure there is is a csv file
+    if not syncfiles['csv']:
+        logger.error("Could not find a csv file with samples to upload.")
+        if not no_mail:
+            email_error(logfile, "FIND CSV FILE")
+        sys.exit()
+    else:
+        logger.info(f'Found {len(syncfiles["csv"])} csv file(s)')
+    # else:
+    #     for csvfile in syncfiles['csv']:
+    #         check_samples(csvfile, syncfiles)
         
-    for syncfile in syncfiles.keys():
-        print(syncfile)
-        for item in syncfiles[syncfile]:
-            print(item)
+    #Open the sFTP connection
+    logger.info("Establishing sFTP connection to GENSAM")
+    try:
+        sftp = pysftp.Connection(gensamhost, username=sftpusername, private_key=sshkey, private_key_pass=sshkey_password, log=logfile_sftp)
+        sftp.chdir("till-fohm")
+    except:
+        logger.error("Establishing sFTP connection failed.")
+        if not no_mail:
+            email_error(logfile, "sFTP CONNECTION")
+        sys.exit("ERROR: Establishing sFTP connection failed.")
+
+    #Upload all files
+    for csvfile in syncfiles['csv']:
+        #Write the upload of files here
+
+    #Close the sFTP connection
+    logger.info("Closing the sFTP connection.")
+    sftp.close()
+
+
+    #All done!
+    logger.info("Microbiology GENSAM-upload workflow completed")
+        
+    # for syncfile in syncfiles.keys():
+    #     print(syncfile)
+    #     for item in syncfiles[syncfile]:
+    #         print(item)
             
+# def check_samples(csvfile, sampledict):
+#     with open(csvfile) as csv_file:
+#         csv_reader = csv.reader(csv_file, delimiter=';')
+#         for row in csv_reader:
+#             #skip header
+#             if row[0].lower().startswith('provnummer'):
+#                 continue
+#             else:
+#                 sample = row[0]
+
+
 
 def collect_files(datadir, regioncode, labcode):
     filedict = defaultdict(list)
@@ -151,6 +213,28 @@ def email_error(logloc, errorstep):
     msg['Subject'] = "ERROR: Microbiology GENSAM upload"
     msg['From'] = "clinicalgenomics@gu.se"
     msg['To'] = "anders.lind.cggs@gu.se"
+
+    #Send the messege
+    s = smtplib.SMTP('smtp.gu.se')
+    s.send_message(msg)
+    s.quit()
+
+def email_fohm(csvfile):
+    csv_filename = os.path.basename(csvfile)
+
+    msg = EmailMessage()
+    msg.set_content("Bifogat är en lista över uppladdade prover.\n\nMed vänliga hälsningar,\n Klinisk Mikrobiologi Göteborg")
+
+    msg['Subject'] = csv_filename
+    msg['From'] = "clinicalgenomics@gu.se" #Should be KMIK mail
+    msg['To'] = "gensam@folkhalsomyndigheten.se"
+    #Add KMIK mail to CC
+    msg['Cc'] = "clinicalgenomics@gu.se"
+
+    # Add the attachment
+    with open(csvfile, 'rb') as f:
+        data = f.read()
+        msg.add_attachment(data, maintype='text', subtype='plain', filename=csv_filename)
 
     #Send the messege
     s = smtplib.SMTP('smtp.gu.se')
