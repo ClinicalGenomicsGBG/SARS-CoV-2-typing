@@ -111,11 +111,14 @@ def clc_sync(password, run):
 # Upload files and json to selected bucket on HCP.
 def upload_fastq(hcp_paths,hcpm,logger):
     for file_pg in hcp_paths:
-        try:
-            hcpm.upload_file(file_pg, "covid-wgs/"+os.path.basename(file_pg))
-            logger.info(f"uploading: {file_pg}")
-        except Exception as e:
-            logger.error(e)
+        if hcpm.search_objects(file_pg) is None:
+            try:
+                hcpm.upload_file(file_pg, "covid-wgs/"+os.path.basename(file_pg))
+                logger.info(f"uploading: {file_pg}")
+            except Exception as e:
+                logger.error(e)
+                continue
+        else:
             continue
 
 
