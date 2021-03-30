@@ -13,7 +13,7 @@ from tools.check_files import check_files
 from tools import log
 from tools.microReport import nextseq as microreport
 from tools.clc_sync import clc
-
+from tools.emailer import email_micro
 
 def arg():
     parser = argparse.ArgumentParser(prog="direkttest_cronscript.py")
@@ -160,8 +160,14 @@ def main():
     hcp_paths = check_files("/medstore/results/clinical/SARS-CoV-2-typing/nextseq_data/2*/*/*")
     upload_fastq(hcp_paths, hcpm, logger)
 
+    # Notify Microbiology about new data
+    email_subject = 'Results from Artic pipeline now on sFTP and CLC'
+    email_body = f'Artic/pangolin results and virus fasta from the run {run} is now available on the sFTP and CLC, respectively.'
+    email_micro(email_subject, email_body)
+    
     # Upload files to GENSAM
 #    gensam_upload(args)
+
 
 
 if __name__ == "__main__":
