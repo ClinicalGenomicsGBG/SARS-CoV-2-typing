@@ -32,7 +32,7 @@ def main (logdir, dataloc, eurofinshost, username, password, no_mail, no_sync):
                    "-e", f'mirror -vv / {dataloc};bye']
 
     try:
-        lftpresult = subprocess.run(lftpcommand)
+        lftpresult = subprocess.run(lftpcommand, stdout=subprocess.PIPE)
         lftpresult.check_returncode()
         if no_sync:
             logger.info('FTP connection OK.')
