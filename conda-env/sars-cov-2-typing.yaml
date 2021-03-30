@@ -1,0 +1,12 @@
+channels:
+  - conda-forge
+  - bioconda
+dependencies:
+  - python=3.8
+  - lftp
+  - click
+  - boto3==1.12.34
+  - openpyxl==2.6.3
+  - sample-sheet
+  - pysftp
+  - pandas
