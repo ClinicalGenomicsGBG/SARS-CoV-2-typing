@@ -73,9 +73,6 @@ def main (datadir, logdir, regioncode, labcode, gensamhost,
         sys.exit()
     else:
         logger.info(f'Found {len(syncfiles["csv"])} csv file(s)')
-    # else:
-    #     for csvfile in syncfiles['csv']:
-    #         check_samples(csvfile, syncfiles)
         
     #Open the sFTP connection
     logger.info("Establishing sFTP connection to GENSAM")
@@ -99,22 +96,6 @@ def main (datadir, logdir, regioncode, labcode, gensamhost,
 
     #All done!
     logger.info("Microbiology GENSAM-upload workflow completed")
-        
-    # for syncfile in syncfiles.keys():
-    #     print(syncfile)
-    #     for item in syncfiles[syncfile]:
-    #         print(item)
-            
-# def check_samples(csvfile, sampledict):
-#     with open(csvfile) as csv_file:
-#         csv_reader = csv.reader(csv_file, delimiter=';')
-#         for row in csv_reader:
-#             #skip header
-#             if row[0].lower().startswith('provnummer'):
-#                 continue
-#             else:
-#                 sample = row[0]
-
 
 
 def collect_files(datadir, regioncode, labcode):
