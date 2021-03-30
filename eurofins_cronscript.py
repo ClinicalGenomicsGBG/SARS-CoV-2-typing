@@ -11,6 +11,7 @@ from tools import log
 from tools.check_files import check_files
 from tools.microReport import eurofins as microreport
 from tools.syncsftp import main as syncsftp
+from tools.emailer import email_micro
 
 def arg():
     parser = argparse.ArgumentParser(prog="direkttest_cronscript.py")
@@ -81,6 +82,9 @@ def micro_report():
     logfile = "/medstore/logs/pipeline_logfiles/sars-cov-2-typing/microReport.log"
     microreport(eurofinsdir, syncdir, syncedfiles, logfile)
 
+    message_subject = "New Eurofins pangolin files @ sFTP"
+    message_body = "New pangolin files from Eurofins are now available at the KMIK sFTP."
+    email_micro(message_subject, message_body)
 
 # Upload files and json to selected bucket on HCP.
 def upload_fastq(hcp_paths,hcpm,logger):
@@ -94,7 +98,6 @@ def upload_fastq(hcp_paths,hcpm,logger):
             except Exception as e:
                 logger.error(e)
                 continue
-
     
 def main():
     args = arg()
