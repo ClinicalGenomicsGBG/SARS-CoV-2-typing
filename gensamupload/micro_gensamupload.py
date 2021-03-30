@@ -5,7 +5,7 @@ import datetime
 import glob
 import os
 import sys
-from shutil import copyfile
+from shutil import move
 import smtplib
 from email.message import EmailMessage
 import logging
@@ -19,7 +19,10 @@ import pysftp
               help='Path to micro sFTP inbox')
 @click.option('-l', '--logdir', required=True,
               default='/medstore/logs/pipeline_logfiles/sars-cov-2-typing/micro-GENSAM-upload',
-              help='Path dir where log should be saved')
+              help='Path to dir where log should be saved')
+@click.option('-s', '--sent-files', required=True,
+              default='/seqstore/remote/inbox/micro-gensam/shared/sent_files',
+              help='Path to  dir where files should be moved to after upload')
 @click.option('--regioncode', required=True,
               default='14',
               help='FOHM region code. Default is 14')
@@ -37,13 +40,18 @@ import pysftp
               help='Path/to/private/sshkey')
 @click.option('--sshkey-password', required=True,
               help='SSH key password')
+@click.option('-m', '--max-age', required=True, type=int,
+              default=15,
+              help='Max age of files to keep in sent-files folder')
 @click.option('--no-mail', is_flag=True,
               help="Set if you do NOT want e-mails to be sent")
-def main (datadir, logdir, regioncode, labcode, gensamhost, 
-          sftpusername, sshkey, sshkey_password, no_mail):
+@click.option('--no-upload', is_flag=True,
+              help="Set if you do NOT want to upload files to FOHM. Will still try to connect to the sFTP.")
+def main (datadir, logdir, sent_files, regioncode, labcode, gensamhost, 
+          sftpusername, sshkey, sshkey_password, max_age, no_mail, no_upload):
 
     #Run checks on all given inputs
-    checkinput(datadir, logdir, regioncode, labcode)
+    checkinput(datadir, logdir, sent_files, regioncode, labcode)
 
     #Set up the logfile
     now = datetime.datetime.now()
@@ -86,30 +94,76 @@ def main (datadir, logdir, regioncode, labcode, gensamhost,
         sys.exit("ERROR: Establishing sFTP connection failed.")
 
     #Upload all files
-    for datatype in syncfiles:
-        if datatype == 'csv':
-            #Skip this as it should be sent via e-mail
-            continue
-        else:
-            print(datatype)
+    if no_upload:
+        logger.info("No-upload flag set, skipping actual uploads.")
+    else:
+        for datatype in syncfiles:
+            if datatype == 'csv':
+                #Skip this as it should be sent via e-mail
+                continue
+            
+            logger.info(f'Uploading {len(syncfiles[datatype])} {datatype} file(s).') 
+            for datafile in syncfiles[datatype]:
+                sftp.put(datafile)
 
-   
-    #Send e-mils to FOHM and KMIK (and clinicalgenomics)
-#    for csvfile in syncfiles['csv']:
-        #Write e-mailer here
+    #Send e-mails to FOHM and KMIK (and clinicalgenomics)
+    if no_mail:
+        logger.info("No-mail flag set. Skipping sending e-mails")
+    else:
+        for csvfile in syncfiles['csv']:
+            logger.info(f'Sending e-mail to FOHM with the subject "{os.path.basename(csvfile)}"')
+            email_fohm(csvfile)
 
     #Close the sFTP connection
     logger.info("Closing the sFTP connection.")
     sftp.close()
 
+    #Move all files over to sent files folder
+    for datatype in syncfiles:
+        logger.info(f'Moving {len(syncfiles[datatype])} {datatype} file(s) to \'sent_files\'.')
+        for datafile in syncfiles[datatype]:
+            move(datafile, os.path.join(sent_files, os.path.basename(datafile)))
 
+    #Remove old files (> 15 days) in sent_files dir
+    logger.info(f'Looking for old files in {sent_files}.')
+    old_files = find_old(sent_files, max_age, now)
+    if len(old_files) > 0:
+        logger.info(f'Found {len(old_files)} old files in {sent_files}. Removing.')
+        for oldfile in old_files:
+            try:
+                os.remove(oldfile)
+            except:
+                logger.error(f'Could not remove {os.path.basename(oldfile)} from {sent_files}.')
+                if not no_mail:
+                    email_error(logfile, "FIND FILES")
+                sys.exit()
+    else:
+        logger.info(f'Did not find any old files to delete.')
+        
     #All done!
     logger.info("Microbiology GENSAM-upload workflow completed")
 
+def find_old(sent_files, max_age, now):
+    old_files = []
+    ago = now-datetime.timedelta(days=max_age)
+
+    for path, folders, files in os.walk(sent_files):
+       for f in files:
+           filepath = os.path.abspath(os.path.join(path, f))
+           st = os.stat(filepath)
+           mtime = datetime.datetime.fromtimestamp(st.st_ctime) # ctime for time of change of file
+           if mtime < ago:
+               old_files.append(os.path.abspath(filepath))
+
+    return old_files
 
 def collect_files(datadir, regioncode, labcode):
     filedict = defaultdict(list)
     for syncfile in glob.glob(datadir +"/*"):
+        #Skip sent_files dir
+        if syncfile.endswith('sent_files'): #Kinda ugly and hardcoded
+            continue
+
         #Check each kind of file independently
         correctstart = f'{regioncode}_{labcode}_' #Same for all files        
         #All files should have same prefix
@@ -154,11 +208,11 @@ def collect_files(datadir, regioncode, labcode):
     return filedict
 
 
-def checkinput(datadir, logdir, regioncode, labcode):
+def checkinput(datadir, logdir, sent_files, regioncode, labcode):
     #Check that the datalocation to write files to exist and has premissions
     if not os.path.exists(datadir):
         sys.exit("ERROR: Can not find " + datadir + ". Perhaps you need to create it?")
-    if not os.access(logdir, os.R_OK):
+    if not os.access(datadir, os.R_OK):
         sys.exit("ERROR: No read permissions in " + datadir + ".")
     
     #Check that the logdir is there and accesible
@@ -166,6 +220,12 @@ def checkinput(datadir, logdir, regioncode, labcode):
         sys.exit("ERROR: Can not find " + logdir + ". Perhaps you need to create it?")
     if not os.access(logdir, os.W_OK):
         sys.exit("ERROR: No write permissions in " + logdir + ".")
+
+    #Check that the sent files is there and accesible
+    if not os.path.exists(sent_files):
+        sys.exit("ERROR: Can not find " + sent_files + ". Perhaps you need to create it?")
+    if not os.access(sent_files, os.W_OK):
+        sys.exit("ERROR: No write permissions in " + sent_files + ".")
 
     #Make sure region code is an accepted one
     acceptedregions = ['01','03','04','05','06','07','08','09','10','12','13',
@@ -205,7 +265,7 @@ def email_error(logloc, errorstep):
 
     msg['Subject'] = "ERROR: Microbiology GENSAM upload"
     msg['From'] = "clinicalgenomics@gu.se"
-    msg['To'] = "anders.lind.cggs@gu.se"
+    msg['To'] = "clinicalgenomics@gu.se"
 
     #Send the messege
     s = smtplib.SMTP('smtp.gu.se')
@@ -221,8 +281,7 @@ def email_fohm(csvfile):
     msg['Subject'] = csv_filename
     msg['From'] = "clinicalgenomics@gu.se" #Should be KMIK mail
     msg['To'] = "gensam@folkhalsomyndigheten.se"
-    #Add KMIK mail to CC
-    msg['Cc'] = "clinicalgenomics@gu.se"
+    msg['Cc'] = ["clinicalgenomics@gu.se", "johan.ringlander@vgregion.se"]
 
     # Add the attachment
     with open(csvfile, 'rb') as f:
