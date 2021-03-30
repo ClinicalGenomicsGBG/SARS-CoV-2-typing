@@ -21,14 +21,14 @@ def email_error(logloc, task, errorstep):
     s.send_message(msg)
     s.quit()
 
-def email_micro(datatypes):
+def email_micro(subject, body):
     msg = EmailMessage()
-    msg.set_content(f'New data has been deliever to the KMIK sFTP outbox.'
+    msg.set_content(f'{body}'
                     f''
                     f'Kind regards,'
                     f'Clinical Genomics Gothenburg')
 
-    msg['Subject'] = "Delivery of new COVIDseq data"
+    msg['Subject'] = f'{subject}'
     msg['From'] = "clinicalgenomics@gu.se"
     msg['To'] = "johan.ringlander@vgregion.se"
 
