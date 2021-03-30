@@ -86,8 +86,17 @@ def main (datadir, logdir, regioncode, labcode, gensamhost,
         sys.exit("ERROR: Establishing sFTP connection failed.")
 
     #Upload all files
-    for csvfile in syncfiles['csv']:
-        #Write the upload of files here
+    for datatype in syncfiles:
+        if datatype == 'csv':
+            #Skip this as it should be sent via e-mail
+            continue
+        else:
+            print(datatype)
+
+   
+    #Send e-mils to FOHM and KMIK (and clinicalgenomics)
+#    for csvfile in syncfiles['csv']:
+        #Write e-mailer here
 
     #Close the sFTP connection
     logger.info("Closing the sFTP connection.")
@@ -138,6 +147,9 @@ def collect_files(datadir, regioncode, labcode):
                 raise Exception(f'Found .csv file, {os.path.basename(syncfile)}, not ending with \'{correctcsvend}\'.')
             else:
                 filedict['csv'].append(syncfile)
+
+        else: #Other weird files in there?
+            raise Exception(f'Found an unexpected file in {datadir}: {os.path.basename(syncfile)}.')
 
     return filedict
 
