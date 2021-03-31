@@ -170,7 +170,7 @@ def main():
     email_micro(email_subject, email_body)
     
     # Upload files to GENSAM
-#    gensam_upload(args)
+    gensam_upload(args)
 
 
 
