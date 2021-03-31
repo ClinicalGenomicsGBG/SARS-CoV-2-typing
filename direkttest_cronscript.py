@@ -66,6 +66,7 @@ def upload_fastq(files_pg, hcpm, logger):
                 logger.error(e)
                 continue
         else:
+            logger.error(f"Object already exists {file_pg}")
             continue
            
 
