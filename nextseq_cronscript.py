@@ -136,7 +136,13 @@ def gensam_upload(args):
 
 def main():
     args = arg()
-    run = args.run
+
+    # Get runID
+    if args.run:
+        run = args.run
+    else:
+        for d in check_files("/medstore/results/clinical/SARS-CoV-2-typing/nextseq_data/2*"):
+            run = os.path.split(d)[-1]
 
     # Set up the logfile
     now = datetime.datetime.now()
