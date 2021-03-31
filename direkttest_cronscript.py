@@ -58,11 +58,15 @@ def csv_from_excel(xlsx_path):
 # Upload files to HCP
 def upload_fastq(files_pg, hcpm, logger):
     for file_pg in files_pg:
-        try:
-            hcpm.upload_file(file_pg, "covid-wgs/"+os.path.basename(file_pg))
-            logger.info(f"uploading: {file_pg}")
-        except Exception as e:
-            logger.error(e)
+        if hcpm.search_objects(file_pg) is None:
+            try:
+                hcpm.upload_file(file_pg, "covid-wgs/"+os.path.basename(file_pg))
+                logger.info(f"uploading: {file_pg}")
+            except Exception as e:
+                logger.error(e)
+                continue
+        else:
+            logger.error(f"Object already exists {file_pg}")
             continue
            
 

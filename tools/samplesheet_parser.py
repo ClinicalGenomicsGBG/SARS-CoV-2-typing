@@ -25,17 +25,21 @@ def sample_sheet(path,run):
         sample_name = sample['Sample_ID']
         description = sample['Description']
 
-        data[sample['Sample_ID']] = []
-        data[sample['Sample_ID']].append({
-            'referensnummer': description.split("_")[0],
-            'date': description.split("_")[1],
-            'runtype': description.split("_")[2],
-            'age': description.split("_")[3],
-            'gender': description.split("_")[4],
-            'lab_reference': description.split("_")[5],
-            'postalcode': description.split("_")[6],
-            'ct_value': description.split("_")[7]
-        })
+        # Skip controls
+        if sample_name.startswith(('NegCtrl', 'PosCtrl', 'PosKon', 'NegKon')):
+            continue
+        else:
+            data[sample['Sample_ID']] = []
+            data[sample['Sample_ID']].append({
+                'referensnummer': description.split("_")[0],
+                'date': description.split("_")[1],
+                'runtype': description.split("_")[2],
+                'age': description.split("_")[3],
+                'gender': description.split("_")[4],
+                'lab_reference': description.split("_")[5],
+                'postalcode': description.split("_")[6],
+                'ct_value': description.split("_")[7]
+            })
 
     with open(f"/medstore/results/clinical/SARS-CoV-2-typing/nextseq_data/{run}/metadata/{run}_metadata.json", 'w') as outfile:
         json.dump(data, outfile,indent=4)
