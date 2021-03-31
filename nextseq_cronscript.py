@@ -111,11 +111,15 @@ def clc_sync(password, run):
 # Upload files and json to selected bucket on HCP.
 def upload_fastq(hcp_paths,hcpm,logger):
     for file_pg in hcp_paths:
-        try:
-            hcpm.upload_file(file_pg, "covid-wgs/"+os.path.basename(file_pg))
-            logger.info(f"uploading: {file_pg}")
-        except Exception as e:
-            logger.error(e)
+        if hcpm.search_objects(file_pg) is None:
+            try:
+                hcpm.upload_file(file_pg, "covid-wgs/"+os.path.basename(file_pg))
+                logger.info(f"uploading: {file_pg}")
+            except Exception as e:
+                logger.error(e)
+                continue
+        else:
+            logger.error(f"Object already exists {file_pg}")
             continue
 
 
@@ -140,7 +144,7 @@ def main():
     logger = setup_logger('hcp_log', logfile)
 
     # Fix pangolin files for HCP and GENSAM
-    pangolin_path = check_files("/medstore/results/clinical/SARS-CoV-2-typing/nextseq_data/21*/lineage/*")
+    pangolin_path = check_files("/medstore/results/clinical/SARS-CoV-2-typing/nextseq_data/2*/lineage/*")
     pangolin(pangolin_path)
 
     # Sync pangolin and artic files to micro sftp
