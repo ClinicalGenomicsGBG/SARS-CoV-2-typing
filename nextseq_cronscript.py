@@ -125,8 +125,8 @@ def upload_fastq(hcp_paths,hcpm,logger):
 
 @log.log_error("/medstore/logs/pipeline_logfiles/sars-cov-2-typing/nextseqwrapper_cronjob.log")
 # Upload fasta, fastq and pangolin files to GENSAM
-def gensam_upload(args):
-    cmd = ["gensamupload/gensamupload.py", "-r", args.run, "--sshkey-password", args.sshkey]
+def gensam_upload(args,run):
+    cmd = ["gensamupload/gensamupload.py", "-r", run, "--sshkey-password", args.sshkey]
     process = subprocess.Popen(cmd, stdout=subprocess.PIPE, shell=False)
 
     while process.wait() is None:
@@ -176,7 +176,7 @@ def main():
     email_micro(email_subject, email_body)
     
     # Upload files to GENSAM
-    gensam_upload(args)
+    gensam_upload(args,run)
 
 
 
