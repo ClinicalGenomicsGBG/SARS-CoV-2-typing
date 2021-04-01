@@ -30,7 +30,7 @@ def main(eurofinsdir, syncdir, syncedfiles, logfile):
         synced = sync_file.read().splitlines()
 
     # Find all pangolin files in the Eurofins folder
-    pangolin_list = glob.glob(eurofinsdir + "/*/*/*_pangolin_lineage_classification_fillempty.txt")
+    pangolin_list = glob.glob(eurofinsdir + "/*/*_pangolin_lineage_classification_fillempty.txt")
 
     # Add the synced files to the list
     f = open(syncedfiles, "a")
@@ -55,7 +55,7 @@ def main(eurofinsdir, syncdir, syncedfiles, logfile):
 if __name__ == '__main__':
     main()
 
-# Kolla vilka filer som redan laddats över - Läsa in från en fil
+# Kolla vilka filer som redan laddats over - Lasa in fran en fil
 # Hitta alla pangolin resultat i eurofins mappen
-# Synca över de som saknas
-# Göra en md5sum på filen när den är på plats
+# Synca over de som saknas
+# Gora en md5sum pa filen nar den ar pa plats

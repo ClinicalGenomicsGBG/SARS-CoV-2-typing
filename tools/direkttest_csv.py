@@ -20,7 +20,6 @@ def arg():
 def check_files():
     now = dt.datetime.now()
     ago = now-dt.timedelta(minutes=1440)
-#print(os.path.basename(os.path.dirname(path)))
 
     path_list = []
     for path in glob.glob('/medstore/results/clinical/SARS-CoV-2-typing/direkttest/direkttest_*.xlsx', recursive=True):
@@ -34,7 +33,7 @@ def check_files():
 
 def csv_from_excel(path):
     df = pd.DataFrame(pd.read_excel(path, engine='openpyxl')).fillna(value = "NULL")
-    df.to_csv(os.path.basename(path).replace("xlsx","csv"), index=None, header=True)
+    df.to_csv(os.path.abspath(path).replace("xlsx","csv"), index=None, header=True)
 
 
 def main():
