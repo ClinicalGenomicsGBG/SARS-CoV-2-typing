@@ -165,7 +165,7 @@ def main():
     micro_report()
 
     # Parse nextseq samplesheet for metadata
-    samplesheet_path = check_files(f"/seqstore/instruments/nextseq_500175_gc/Demultiplexdir/{run}/SampleSheet.csv")
+    samplesheet_path = f'/seqstore/instruments/nextseq_500175_gc/Demultiplexdir/{run}/SampleSheet.csv'
     if not os.path.exists(f"/medstore/results/clinical/SARS-CoV-2-typing/nextseq_data/{run}/metadata"):
         os.makedirs(f"/medstore/results/clinical/SARS-CoV-2-typing/nextseq_data/{run}/metadata")
 
