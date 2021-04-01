@@ -73,6 +73,11 @@ def main (datadir, logdir, sent_files, regioncode, labcode, gensamhost,
             email_error(logfile, "FIND FILES")
         sys.exit()
 
+    #If there were no files in the dir, quit
+    if len(syncfiles) < 1:
+        logger.info("Found no files to upload. Quitting.")
+        sys.exit()
+
     #Make sure there is is a csv file
     if not syncfiles['csv']:
         logger.error("Could not find a csv file with samples to upload.")
