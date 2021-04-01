@@ -8,7 +8,7 @@ import os
 # Check files automatically (24hrs)
 def check_files(file_path):
     now = dt.datetime.now()
-    ago = now-dt.timedelta(minutes=1440)
+    ago = now-dt.timedelta(minutes=720)
 
     path_list = []
     for path in glob.glob(file_path, recursive=True):

@@ -11,6 +11,7 @@ from tools import log
 from tools.check_files import check_files
 from tools.microReport import eurofins as microreport
 from tools.syncsftp import main as syncsftp
+from tools.emailer import email_micro
 
 def arg():
     parser = argparse.ArgumentParser(prog="direkttest_cronscript.py")
@@ -69,7 +70,7 @@ def pangolin(pangolin_path):
         if fnmatch.fnmatch(os.path.basename(f), "*_pangolin_lineage_classification.txt"): 
             print("updating: " + f)
             df = pd.DataFrame(pd.read_csv(f, sep="\t")).fillna(value = "NULL")
-            df.to_csv(os.path.basename(f).replace(".txt","_fillempty.txt"), index=None, header=True, sep="\t") 
+            df.to_csv(os.path.abspath(f).replace(".txt","_fillempty.txt"), index=None, header=True, sep="\t") 
 
 
 @log.log_error("/medstore/logs/pipeline_logfiles/sars-cov-2-typing/eurofinswrapper_cronjob.log")
@@ -77,10 +78,13 @@ def pangolin(pangolin_path):
 def micro_report():
     eurofinsdir = "/medstore/results/clinical/SARS-CoV-2-typing/eurofins_data/goteborg"
     syncdir = "/seqstore/remote/outbox/sarscov2-micro/shared/eurofins"
-    syncedfiles = "/apps/bio/repos/sars-cov-2-typing/eurofinsdl/syncedFiles.txt"
+    syncedfiles = "/medstore/results/clinical/SARS-CoV-2-typing/microbiologySync/syncedFiles.txt"
     logfile = "/medstore/logs/pipeline_logfiles/sars-cov-2-typing/microReport.log"
     microreport(eurofinsdir, syncdir, syncedfiles, logfile)
 
+    message_subject = "New Eurofins pangolin files @ sFTP"
+    message_body = "New pangolin files from Eurofins are now available at the KMIK sFTP."
+    email_micro(message_subject, message_body)
 
 # Upload files and json to selected bucket on HCP.
 def upload_fastq(hcp_paths,hcpm,logger):
@@ -94,7 +98,6 @@ def upload_fastq(hcp_paths,hcpm,logger):
             except Exception as e:
                 logger.error(e)
                 continue
-
     
 def main():
     args = arg()

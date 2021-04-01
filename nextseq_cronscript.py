@@ -3,7 +3,8 @@
 import argparse
 import pandas as pd
 import os
-import datetime as dt
+import datetime 
+import logging
 import fnmatch
 import glob
 from NGPinterface.hcp import HCPManager
@@ -12,7 +13,7 @@ from tools.check_files import check_files
 from tools import log
 from tools.microReport import nextseq as microreport
 from tools.clc_sync import clc
-
+from tools.emailer import email_micro
 
 def arg():
     parser = argparse.ArgumentParser(prog="direkttest_cronscript.py")
@@ -30,6 +31,8 @@ def arg():
                             help="runid for nextseq")
     parser.add_argument("-p", "--password", 
                             help="CLC password")
+    parser.add_argument("--sshkey", 
+                            help="GENSAM upload sshkey- password")
     args = parser.parse_args()
 
     return args
@@ -82,7 +85,7 @@ def micro_report():
     nextseqdir = "/medstore/results/clinical/SARS-CoV-2-typing/nextseq_data/" 
     articdir = "/medstore/results/clinical/SARS-CoV-2-typing/artic_results/"
     syncdir = "/seqstore/remote/outbox/sarscov2-micro/shared/nextseq"
-    syncedfiles = "/apps/bio/repos/sars-cov-2-typing/nextseq/syncedFiles.txt"
+    syncedfiles = "/medstore/results/clinical/SARS-CoV-2-typing/microbiologySync/syncedFiles.txt"
     logfile = "/medstore/logs/pipeline_logfiles/sars-cov-2-typing/microReport.log"
 
     microreport(nextseqdir, articdir, syncdir, syncedfiles, logfile) 
@@ -90,14 +93,18 @@ def micro_report():
 
 @log.log_error("/medstore/logs/pipeline_logfiles/sars-cov-2-typing/nextseqwrapper_cronjob.log")
 # Parse samplesheet and put in metadata json, for HCP upload
-def samplesheet_parser(samplesheet_path):
-    samplesheet(path)
+def samplesheet_parser(samplesheet_path,run):
+    sample_sheet(samplesheet_path,run)
 
 
 @log.log_error("/medstore/logs/pipeline_logfiles/sars-cov-2-typing/nextseqwrapper_cronjob.log")
 # Import consensus fasta files to CLC
 def clc_sync(password, run):
-    clc(password, run) 
+    # Variables for CLC upload
+    server = "medair.sahlgrenska.gu.se"
+    port = 7777
+    user = "cmduser"
+    clc(password,run,server,port,user) 
 
 
 @log.log_error("/medstore/logs/pipeline_logfiles/sars-cov-2-typing/nextseqwrapper_cronjob.log")
@@ -113,9 +120,14 @@ def upload_fastq(hcp_paths,hcpm,logger):
 
 
 @log.log_error("/medstore/logs/pipeline_logfiles/sars-cov-2-typing/nextseqwrapper_cronjob.log")
-def gensam_upload():
-    # Upload fasta, fastq and pangolin files to GENSAM
-    pass
+# Upload fasta, fastq and pangolin files to GENSAM
+def gensam_upload(args):
+    cmd = ["gensamupload/gensamupload.py", "-r", args.run, "--sshkey-password", args.sshkey]
+    process = subprocess.Popen(cmd, stdout=subprocess.PIPE, shell=False)
+
+    while process.wait() is None:
+        pass
+    process.stdout.close()
 
 
 def main():
@@ -135,19 +147,27 @@ def main():
     micro_report()
 
     # Parse nextseq samplesheet for metadata
-    samplesheet_path = check_files("/seqstore/instruments/nextseq_500175_gc/Demultiplexdir/{run}/SampleSheet.csv")
-    samplesheet_parser(samplesheet_path)
+    samplesheet_path = check_files(f"/seqstore/instruments/nextseq_500175_gc/Demultiplexdir/{run}/SampleSheet.csv")
+    if not os.path.exists(f"/medstore/results/clinical/SARS-CoV-2-typing/nextseq_data/{run}/metadata"):
+        os.makedirs(f"/medstore/results/clinical/SARS-CoV-2-typing/nextseq_data/{run}/metadata")
+
+    samplesheet_parser(samplesheet_path,run)
 
     # Import consensus fasta files to CLC
-    clc_sync(args.password, run)
+    clc_sync(args.password,run)
 
     # Upload files to HCP
     hcp_paths = check_files("/medstore/results/clinical/SARS-CoV-2-typing/nextseq_data/2*/*/*")
     upload_fastq(hcp_paths, hcpm, logger)
 
+    # Notify Microbiology about new data
+    email_subject = 'Results from Artic pipeline now on sFTP and CLC'
+    email_body = f'Artic/pangolin results and virus fasta from the run {run} is now available on the sFTP and CLC, respectively.'
+    email_micro(email_subject, email_body)
+    
     # Upload files to GENSAM
-    gensam_paths = check_files("")
-    gensam_upload()
+#    gensam_upload(args)
+
 
 
 if __name__ == "__main__":
