@@ -151,7 +151,10 @@ def main():
 
     # Fix pangolin files for HCP and GENSAM
     pangolin_path = check_files("/medstore/results/clinical/SARS-CoV-2-typing/nextseq_data/2*/lineage/*")
-    pangolin(pangolin_path)
+    if len(pangolin_path) < 1:
+        sys.exit()
+    else:
+        pangolin(pangolin_path)
 
     # Sync pangolin and artic files to micro sftp
     micro_report()
