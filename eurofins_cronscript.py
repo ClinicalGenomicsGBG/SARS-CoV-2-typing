@@ -78,8 +78,8 @@ def pangolin(pangolin_path):
 def micro_report():
     eurofinsdir = "/medstore/results/clinical/SARS-CoV-2-typing/eurofins_data/goteborg"
     syncdir = "/seqstore/remote/outbox/sarscov2-micro/shared/eurofins"
-    syncedfiles = "/medstore/results/clinical/SARS-CoV-2-typing/microbiologySync/syncedFiles.txt"
-    logfile = "/medstore/logs/pipeline_logfiles/sars-cov-2-typing/microReport.log"
+    syncedfiles = "/medstore/results/clinical/SARS-CoV-2-typing/microbiologySync/syncedFiles_eurofins.txt"
+    logfile = "/medstore/logs/pipeline_logfiles/sars-cov-2-typing/microReport_eurofins.log"
     synclist = microreport(eurofinsdir, syncdir, syncedfiles, logfile)
 
     #Only send mail if actually synced anything

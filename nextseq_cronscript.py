@@ -85,8 +85,8 @@ def micro_report():
     nextseqdir = "/medstore/results/clinical/SARS-CoV-2-typing/nextseq_data/" 
     articdir = "/medstore/results/clinical/SARS-CoV-2-typing/artic_results/"
     syncdir = "/seqstore/remote/outbox/sarscov2-micro/shared/nextseq"
-    syncedfiles = "/medstore/results/clinical/SARS-CoV-2-typing/microbiologySync/syncedFiles.txt"
-    logfile = "/medstore/logs/pipeline_logfiles/sars-cov-2-typing/microReport.log"
+    syncedfiles = "/medstore/results/clinical/SARS-CoV-2-typing/microbiologySync/syncedFiles_nextseq.txt"
+    logfile = "/medstore/logs/pipeline_logfiles/sars-cov-2-typing/microReport_nextseq.log"
 
     synclist = microreport(nextseqdir, articdir, syncdir, syncedfiles, logfile) 
 
