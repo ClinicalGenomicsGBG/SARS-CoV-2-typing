@@ -281,7 +281,7 @@ def email_fohm(csvfile):
     msg['Subject'] = csv_filename
     msg['From'] = "clinicalgenomics@gu.se" #Should be KMIK mail
     msg['To'] = "gensam@folkhalsomyndigheten.se"
-    msg['Cc'] = ["clinicalgenomics@gu.se", "johan.ringlander@vgregion.se"]
+    msg['Cc'] = ["anders.lind.cgg@gu.se", "johan.ringlander@vgregion.se"]
 
     # Add the attachment
     with open(csvfile, 'rb') as f:
