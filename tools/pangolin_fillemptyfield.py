@@ -96,7 +96,7 @@ def fill_empty_cells(args):
 
     else:
         df = pd.DataFrame(pd.read_csv(args.filepath, sep="\t")).fillna(value = "NULL")
-        df.to_csv(os.path.basename(args.filepath).replace(".txt","_fillempty.txt"), index=None, header=True, sep="\t")
+        df.to_csv(os.path.abspath(args.filepath).replace(".txt","_fillempty.txt"), index=None, header=True, sep="\t")
 
 
 
