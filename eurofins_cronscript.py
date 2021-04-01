@@ -80,11 +80,13 @@ def micro_report():
     syncdir = "/seqstore/remote/outbox/sarscov2-micro/shared/eurofins"
     syncedfiles = "/medstore/results/clinical/SARS-CoV-2-typing/microbiologySync/syncedFiles.txt"
     logfile = "/medstore/logs/pipeline_logfiles/sars-cov-2-typing/microReport.log"
-    microreport(eurofinsdir, syncdir, syncedfiles, logfile)
+    synclist = microreport(eurofinsdir, syncdir, syncedfiles, logfile)
 
-    message_subject = "New Eurofins pangolin files @ sFTP"
-    message_body = "New pangolin files from Eurofins are now available at the KMIK sFTP."
-    email_micro(message_subject, message_body)
+    #Only send mail if actually synced anything
+    if len(synclist) > 0:
+        message_subject = "New Eurofins pangolin files @ sFTP"
+        message_body = "New pangolin files from Eurofins are now available at the KMIK sFTP."
+        email_micro(message_subject, message_body)
 
 # Upload files and json to selected bucket on HCP.
 def upload_fastq(hcp_paths,hcpm,logger):
