@@ -58,7 +58,7 @@ def csv_from_excel(xlsx_path):
 # Upload files to HCP
 def upload_fastq(files_pg, hcpm, logger):
     for file_pg in files_pg:
-        if hcpm.search_objects(file_pg) is None:
+        if not hcpm.search_objects(file_pg):
             try:
                 hcpm.upload_file(file_pg, "covid-wgs/"+os.path.basename(file_pg))
                 logger.info(f"uploading: {file_pg}")

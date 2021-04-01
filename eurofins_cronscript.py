@@ -92,7 +92,7 @@ def upload_fastq(hcp_paths,hcpm,logger):
         if "md5sums.txt" in file_pg or file_pg.endswith("classification.txt"):
             continue
         else:
-            if hcpm.search_objects(file_pg) is None:
+            if not hcpm.search_objects(file_pg):
                 try:
                      hcpm.upload_file(file_pg, "covid-wgs/"+os.path.basename(file_pg))
                      logger.info(f"uploading: {file_pg}")
