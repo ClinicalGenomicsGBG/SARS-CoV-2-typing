@@ -1,5 +1,20 @@
 # sars-cov-2-typing
 
+## Background and information
+Confluence: https://clinicalgenomics.atlassian.net/wiki/spaces/C/overview    
+Miro: https://miro.com/app/board/o9J_lWIk1bM=/
+
+The main purpose of this project is to make all information about samples taken for COVID-testing and aggregate it in a lightweight web interface. 
+
+The idea being that one should be able to ask questions such as "During the first week in February, how many samples were detected with the COVID strain B.1.1.7 in samples from females aged between 25-45".
+
+There are three points of data input. Direkttest, Eurofins and Nextseq, where Nextseq data is sequenced in Gothenburg. The three different wrappers are used as cronscript to collect and prepare the data automatically. The metadata (excel files and csv for Direkttest, pangolin results for Eurofins and pangolin results and samplesheet information for Nextseq data) is uploaded to the HCP and then indexed in HCI. The other files such as fastq, fasta and html files are uploaded directly to the HCP bucket goteborg without being indexed.
+
+The HCI will make it possible to query an index for information that has been uploaded to the HCP. The code in this repository is mainly for preparing the data for indexing and storing. 
+
+Nextseq data will be uploaded till GENSAM. 
+
+
 ## Usage
 
 ### View help page
