@@ -21,6 +21,7 @@ def eurofins(eurofinsdir, syncdir, syncedfiles, logfile):
 
     # Add the synced files to the list
     f = open(syncedfiles, "a")
+    synclist = []
     for pangolin_file in pangolin_list:
         pangolin_base = os.path.basename(pangolin_file)
         # Have the file already been copied over at some point?
@@ -28,10 +29,12 @@ def eurofins(eurofinsdir, syncdir, syncedfiles, logfile):
             log.write("** LOG: Copying " + pangolin_base + " to " + syncdir + ".\n")
             copy(pangolin_file, syncdir)
             f.write(pangolin_base + "\n")
+            synclist.append(pangolin_base)
         else:
             continue
 
     f.close()
+    return synclist
 
     # Write an end to the log
     now = datetime.datetime.now()
@@ -58,6 +61,7 @@ def nextseq(nextseqdir, articdir, syncdir, syncedfiles, logfile):
 
     # Add the synced files to the list
     f = open(syncedfiles, "a")
+    synclist = []
     for pangolin_file in pangolin_list:
         pangolin_base = os.path.basename(pangolin_file)
         # Have the file already been copied over at some point?
@@ -65,10 +69,12 @@ def nextseq(nextseqdir, articdir, syncdir, syncedfiles, logfile):
             log.write("** LOG: Copying " + pangolin_base + " to " + syncdir + ".\n")
             copy(pangolin_file, syncdir)
             f.write(pangolin_base + "\n")
+            synclist.append(pangolin_base)
         else:
             continue
 
     f.close()
+    return synclist
 
     # Add the synced artic files to the list
     fa = open(syncedfiles, "a")
