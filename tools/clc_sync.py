@@ -16,9 +16,7 @@ def arg():
 def clc(password,run,server,port,user):
     log_file=open('/medstore/logs/pipeline_logfiles/sars-cov-2-typing/nextseq_clcimport.log','a')
     # Check if directory exists
-    if os.path.exists(f"/medstore/CLC_Data_Folders/Microbiology/SARS-CoV-2_Clinical/Illumina/{run}"):
-        pass
-    else:
+    if not os.path.exists(f"/medstore/CLC_Data_Folders/Microbiology/SARS-CoV-2_Clinical/Illumina/{run}"):
         # Create directory on CLC
         cmd = ["/apps/clcservercmdline/clcserver", "-S", server, 
                                                 "-P", str(port), 
@@ -37,27 +35,23 @@ def clc(password,run,server,port,user):
     for path in glob.glob(f"/medstore/results/clinical/SARS-CoV-2-typing/nextseq_data/{run}/fasta/*.fa", recursive=True):
         # Check if file exists on CLC
         clc_file = "Consensus_"+os.path.basename(path.replace(".fa","*"))
-        for clc in glob.glob(f"/medstore/CLC_Data_Folders/Microbiology/SARS-CoV-2_Clinical/Illumina/{run}/{clc_file}", recursive=True):
-            if os.path.exists(clc):
-                pass
-            else:
-                cmd2 = ["/apps/clcservercmdline/clcserver", "-S", server, 
-                                                            "-P", str(port), 
-                                                            "-U", user, 
-                                                            "-W", password, 
-                                                            "-G", "clinical-production", 
-                                                            "-A", "import", 
-                                                            "-f", "fasta", 
-                                                            "-s", f"clc://serverfile/{path}", 
-                                                            "-d", f"clc://server/CLC_Data_Folders/Microbiology/SARS-CoV-2_Clinical/Illumina/{run}"]
-                process2 = subprocess.Popen(cmd2, stdout=subprocess.PIPE, stderr=log_file, shell=False)
+        if not glob.glob(f"/medstore/CLC_Data_Folders/Microbiology/SARS-CoV-2_Clinical/Illumina/{run}/{clc_file}", recursive=True):
+            cmd2 = ["/apps/clcservercmdline/clcserver", "-S", server, 
+                    "-P", str(port), 
+                    "-U", user, 
+                    "-W", password, 
+                    "-G", "clinical-production", 
+                    "-A", "import", 
+                    "-f", "fasta", 
+                    "-s", f"clc://serverfile/{path}", 
+                    "-d", f"clc://server/CLC_Data_Folders/Microbiology/SARS-CoV-2_Clinical/Illumina/{run}"]
+            process2 = subprocess.Popen(cmd2, stdout=subprocess.PIPE, stderr=log_file, shell=False)
 
-                while process2.wait() is None:
-                    pass
-                process2.stdout.close()
+            while process2.wait() is None:
+                pass
+            process2.stdout.close()
 
     log_file.close()
-
 
 def main():
     args = arg()
