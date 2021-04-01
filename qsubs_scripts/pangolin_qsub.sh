@@ -5,7 +5,7 @@
 #$ -j y
 #$ -S /bin/bash
 #$ -pe mpi 1
-#$ -q batch.q
+#$ -q wgs.q
 #$ -l excl=1
 
 OUTDIR='/medstore/results/clinical/SARS-CoV-2-typing/pangolin_results'
