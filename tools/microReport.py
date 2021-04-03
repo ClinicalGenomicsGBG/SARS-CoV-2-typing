@@ -28,11 +28,11 @@ def eurofins(eurofinsdir, syncdir, syncedfiles, logfile):
         if pangolin_base not in synced:
             #Skip if it is already in the syncdir
             if os.path.exists(os.path.join(syncdir, pangolin_base)):
-                log.write(f'** LOG: {pangolin_base} already in {syncdir}. Skipping.')
+                log.write(f'** LOG: {pangolin_base} already in {syncdir}. Skipping.\n')
                 try:
                     f.write(pangolin_base + "\n")
                 except:
-                    log.write(f'** ERROR: Could not write {pangolin_base} to {syncedfiles}.')
+                    log.write(f'** ERROR: Could not write {pangolin_base} to {syncedfiles}.\n')
             else:
                 log.write("** LOG: Copying " + pangolin_base + " to " + syncdir + ".\n")
                 try:
@@ -43,17 +43,17 @@ def eurofins(eurofinsdir, syncdir, syncedfiles, logfile):
                     f.write(pangolin_base + "\n")
                     synclist.append(pangolin_base)
                 except: 
-                    log.write(f'** ERROR: Could not write {pangolin_base} to {syncedfiles}.')
+                    log.write(f'** ERROR: Could not write {pangolin_base} to {syncedfiles}.\n')
 
         else:
             continue
 
     #Closing the syncfiles file
-    log.write(f'** LOG: Closing {syncedfiles}')
+    log.write(f'** LOG: Closing {syncedfiles}.\n')
     try:
         f.close()
     except:
-        log.write(f'** ERROR: Could not close {syncedfiles}.')
+        log.write(f'** ERROR: Could not close {syncedfiles}.\n')
 
     # Write an end to the log
     now = datetime.datetime.now()
