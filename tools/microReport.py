@@ -29,14 +29,23 @@ def eurofins(eurofinsdir, syncdir, syncedfiles, logfile):
             log.write("** LOG: Copying " + pangolin_base + " to " + syncdir + ".\n")
             try:
                 copy(pangolin_file, syncdir)
-                f.write(pangolin_base + "\n")
-                synclist.append(pangolin_base)
             except:
                 log.write(f'** ERROR: Could not copy {pangolin_base}.\n')
+            try:
+                f.write(pangolin_base + "\n")
+                synclist.append(pangolin_base)
+            except: 
+                log.write(f'** ERROR: Could not write {pangolin_base} to {syncedfiles}.')
+
         else:
             continue
 
-    f.close()
+    #Closing the syncfiles file
+    log.write(f'** LOG: Closing {syncedfiles}')
+    try:
+        f.close()
+    except:
+        log.write(f'** ERROR: Could not close {syncedfiles}.')
 
     # Write an end to the log
     now = datetime.datetime.now()
