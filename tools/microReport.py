@@ -37,7 +37,6 @@ def eurofins(eurofinsdir, syncdir, syncedfiles, logfile):
             continue
 
     f.close()
-    return synclist
 
     # Write an end to the log
     now = datetime.datetime.now()
@@ -45,7 +44,7 @@ def eurofins(eurofinsdir, syncdir, syncedfiles, logfile):
     log.write("---\n")
     log.close()
 
-
+    return synclist
 def nextseq(nextseqdir, articdir, syncdir, syncedfiles, logfile):
     log = open(logfile, "a")
     now = datetime.datetime.now()
@@ -77,7 +76,6 @@ def nextseq(nextseqdir, articdir, syncdir, syncedfiles, logfile):
             continue
 
     f.close()
-    return synclist
 
     # Add the synced artic files to the list
     fa = open(syncedfiles, "a")
@@ -98,6 +96,8 @@ def nextseq(nextseqdir, articdir, syncdir, syncedfiles, logfile):
     log.write("** LOG: Finished copying @ " + now.strftime("%Y-%m-%d %H:%M:%S") + "\n")
     log.write("---\n")
     log.close()
+
+    return synclist
 
 if __name__ == '__main__':
     main()
