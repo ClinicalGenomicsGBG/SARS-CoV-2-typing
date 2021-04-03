@@ -26,16 +26,24 @@ def eurofins(eurofinsdir, syncdir, syncedfiles, logfile):
         pangolin_base = os.path.basename(pangolin_file)
         # Have the file already been copied over at some point?
         if pangolin_base not in synced:
-            log.write("** LOG: Copying " + pangolin_base + " to " + syncdir + ".\n")
-            try:
-                copy(pangolin_file, syncdir)
-            except:
-                log.write(f'** ERROR: Could not copy {pangolin_base}.\n')
-            try:
-                f.write(pangolin_base + "\n")
-                synclist.append(pangolin_base)
-            except: 
-                log.write(f'** ERROR: Could not write {pangolin_base} to {syncedfiles}.')
+            #Skip if it is already in the syncdir
+            if os.path.exists(os.path.join(syncdir, pangolin_base)):
+                log.write(f'** LOG: {pangolin_base} already in {syncdir}. Skipping.')
+                try:
+                    f.write(pangolin_base + "\n")
+                except:
+                    log.write(f'** ERROR: Could not write {pangolin_base} to {syncedfiles}.')
+            else:
+                log.write("** LOG: Copying " + pangolin_base + " to " + syncdir + ".\n")
+                try:
+                    copy(pangolin_file, syncdir)
+                except:
+                    log.write(f'** ERROR: Could not copy {pangolin_base}.\n')
+                try:
+                    f.write(pangolin_base + "\n")
+                    synclist.append(pangolin_base)
+                except: 
+                    log.write(f'** ERROR: Could not write {pangolin_base} to {syncedfiles}.')
 
         else:
             continue
