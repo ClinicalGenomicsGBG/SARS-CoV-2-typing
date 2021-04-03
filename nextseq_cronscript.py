@@ -130,25 +130,32 @@ def upload_fastq(hcp_paths,hcpm,logger):
 
 @log.log_error("/medstore/logs/pipeline_logfiles/sars-cov-2-typing/nextseqwrapper_cronjob.log")
 # Upload fasta, fastq and pangolin files to GENSAM
-def gensam_upload(args,run):
-    cmd = ["gensamupload/gensamupload.py", "-r", run, "--sshkey-password", args.sshkey]
-    process = subprocess.Popen(cmd, stdout=subprocess.PIPE, shell=False)
+def gensam_upload(sshkey,run):
+    #logsub = open("~/inbox/gensam.log", "w") 
+    #cmd = ["gensamupload/gensamupload.py", "-r", run, "--sshkey-password", args.sshkey]
+    cmd = ["python", "/apps/bio/repos/sars-cov-2-typing/gensamupload/gensamupload.py", "-r", run, "--sshkey-password", sshkey, "--no-mail", "--no-upload"]
+    print(cmd)
+    process1 = subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
+    print(process1.stdout)
+    print("ERR")
+    #print(process1.stderr)
 
-    while process.wait() is None:
-        pass
-    process.stdout.close()
-
+    # while process.wait() is None:
+    #     pass
+    # process.stdout.close()
+    logsub.close()
 
 def main():
     args = arg()
-
+    sshkey=args.sshkey
     # Get runID
     if args.run:
         run = args.run
     else:
         for d in check_files("/medstore/results/clinical/SARS-CoV-2-typing/nextseq_data/2*"):
             run = os.path.split(d)[-1]
-
+            
+    print(run)
     # Set up the logfile
     now = datetime.datetime.now()
     logfile = os.path.join("/medstore/logs/pipeline_logfiles/sars-cov-2-typing/HCP_upload/", "HCP_upload_nextseq" + now.strftime("%y%m%d_%H%M%S") + ".log")
@@ -179,7 +186,7 @@ def main():
     upload_fastq(hcp_paths, hcpm, logger)
     
     # Upload files to GENSAM
-    gensam_upload(args,run)
+    #gensam_upload(sshkey,run)
 
 
 
