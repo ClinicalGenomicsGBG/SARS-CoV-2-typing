@@ -70,8 +70,8 @@ def pangolin(pangolin_path):
         if fnmatch.fnmatch(os.path.basename(f), "*_pangolin_lineage_classification.txt"): 
             print("updating: " + f)
             df = pd.DataFrame(pd.read_csv(f, sep="\t")).fillna(value = "NULL")
-            df.to_csv(os.path.abspath(f).replace(".txt","_fillempty.txt"), index=None, header=True, sep="\t") 
-
+            #df.to_csv(os.path.abspath(f).replace(".txt","_fillempty.txt"), index=None, header=True, sep="\t")
+            df.to_csv(os.path.dirname(os.path.abspath(f))+"/"+os.path.basename(os.path.dirname(f))+"_"+os.path.basename(f).replace(".txt","_fillempty.txt"), index=None, header=True, sep="\t")
 
 @log.log_error("/medstore/logs/pipeline_logfiles/sars-cov-2-typing/eurofinswrapper_cronjob.log")
 # Sync pangolin files to micro sftp
