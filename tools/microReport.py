@@ -32,7 +32,7 @@ def eurofins(eurofinsdir, syncdir, syncedfiles, logfile):
                 f.write(pangolin_base + "\n")
                 synclist.append(pangolin_base)
             except:
-                log.write(f'** ERROR: Could not copy {pangolin_base}.')
+                log.write(f'** ERROR: Could not copy {pangolin_base}.\n')
         else:
             continue
 
