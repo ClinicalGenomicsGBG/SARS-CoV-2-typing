@@ -66,7 +66,7 @@ def pangolin(path_list):
             for i,row in df.iterrows():
                 df["taxon"] = df["taxon"].replace(row["taxon"], "_".join(row["taxon"].split("_")[1:4])) # change taxon names
 
-            df.to_csv(os.path.dirname(os.path.abspath(f))+"/"+os.path.basename(os.path.dirname(f))+"_"+os.path.basename(f).replace(".txt","_gensam.txt"), index=None, header=True, sep="\t") # tab sep output without NULL
+            df.to_csv(os.path.dirname(os.path.abspath(f))+"/"+os.path.basename(f).replace(".txt","_gensam.txt"), index=None, header=True, sep="\t") # tab sep output without NULL
 
     # Specifics for nextseq data uploaded to HCP
     for f in path_list:
@@ -76,7 +76,7 @@ def pangolin(path_list):
             for i,row in df.iterrows():
                 df["taxon"] = df["taxon"].replace(row["taxon"], "_".join(row["taxon"].split("_")[1:4])) # change taxon names
 
-            df.to_csv(os.path.dirname(os.path.abspath(f))+"/"+os.path.basename(os.path.dirname(f))+"_"+os.path.basename(f).replace(".txt","_fillempty.txt"), index=None, header=True, sep="\t") # tab sep output
+            df.to_csv(os.path.dirname(os.path.abspath(f))+"/"+os.path.basename(f).replace(".txt","_fillempty.txt"), index=None, header=True, sep="\t") # tab sep output
 
 
 @log.log_error("/medstore/logs/pipeline_logfiles/sars-cov-2-typing/nextseqwrapper_cronjob.log")
