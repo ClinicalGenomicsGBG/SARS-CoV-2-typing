@@ -81,7 +81,7 @@ def pangolin(path_list):
 
 @log.log_error("/medstore/logs/pipeline_logfiles/sars-cov-2-typing/nextseqwrapper_cronjob.log")
 # Send artic csv file and pangolin result file to micro sftp
-def micro_report():
+def micro_report(run):
     nextseqdir = "/medstore/results/clinical/SARS-CoV-2-typing/nextseq_data/" 
     articdir = "/medstore/results/clinical/SARS-CoV-2-typing/artic_results/"
     syncdir = "/seqstore/remote/outbox/sarscov2-micro/shared/nextseq"
@@ -169,7 +169,7 @@ def main():
         pangolin(pangolin_path)
 
     # Sync pangolin and artic files to micro sftp
-    micro_report()
+    micro_report(run)
 
     # Parse nextseq samplesheet for metadata
     samplesheet_path = f'/seqstore/instruments/nextseq_500175_gc/Demultiplexdir/{run}/SampleSheet.csv'
