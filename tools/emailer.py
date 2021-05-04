@@ -30,7 +30,7 @@ def email_micro(subject, body):
 
     msg['Subject'] = f'{subject}'
     msg['From'] = "clinicalgenomics@gu.se"
-    msg['To'] = ["johan.ringlander@vgregion.se", "josefin.olausson@vgregion.se", "tim.magnusson@vgregion.se"]
+    msg['To'] = ["johan.ringlander@vgregion.se", "josefin.olausson@vgregion.se"]
     msg['Cc'] = "anders.lind.cgg@gu.se"
 
     #Send the messege
