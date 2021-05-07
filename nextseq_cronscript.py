@@ -87,13 +87,14 @@ def micro_report(run):
     syncdir = "/seqstore/remote/outbox/sarscov2-micro/shared/nextseq"
     syncedfiles = "/medstore/results/clinical/SARS-CoV-2-typing/microbiologySync/syncedFiles_nextseq.txt"
     logfile = "/medstore/logs/pipeline_logfiles/sars-cov-2-typing/microReport_nextseq.log"
+    run_name = run
 
     synclist = microreport(nextseqdir, articdir, syncdir, syncedfiles, logfile) 
 
     # Notify Microbiology about new data, only if actually synced
     if len(synclist) > 0:
         email_subject = 'Results from Artic pipeline now on sFTP and CLC'
-        email_body = f'Artic/pangolin results and virus fasta from the run {run} is now available on the sFTP and CLC, respectively.'
+        email_body = f'Artic/pangolin results and virus fasta from the run {run_name} is now available on the sFTP and CLC, respectively.'
         email_micro(email_subject, email_body)
 
 @log.log_error("/medstore/logs/pipeline_logfiles/sars-cov-2-typing/nextseqwrapper_cronjob.log")
