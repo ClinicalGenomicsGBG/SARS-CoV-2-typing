@@ -18,8 +18,9 @@ import csv
 @click.option('--eurofinsdir', required=True,
               default='/medstore/results/clinical/SARS-CoV-2-typing/eurofins_data',
               help='Path/to/eurofind_data/directory, uses default if path not specified')
-
-def main (logdir, nextseqdir, eurofinsdir):
+@click.option('-o', '--outfile', required=True,
+              help='Path/to/output/file')
+def main (logdir, nextseqdir, eurofinsdir, outfile):
     #Set up the logfile and start loggin
     now = datetime.datetime.now()
     logfile = os.path.join(logdir, "weekly_" + now.strftime("%y%m%d_%H%M%S") + ".log")
@@ -32,7 +33,7 @@ def main (logdir, nextseqdir, eurofinsdir):
     logger.info(f'The following NextSeq runs were found: {" ".join(nextseq_runs)}')
 
     #Find number of samples for nextseq run
-    logger.info('Finding number of samples in last weeks runs')
+    logger.info('Finding all samples from in-house seqeuncing runs')
     nextseq_dict = defaultdict(lambda: defaultdict(dict))
     for run in nextseq_runs:
         #Find which week the run belongs to
@@ -67,14 +68,26 @@ def main (logdir, nextseqdir, eurofinsdir):
 
     #Make an output file (csv + excel)
     #Probably keep appending to the same old file
+    logger.info(f'Writing data to {outfile}')
+    #Open the output file
+    try:
+        outf = open(outfile, "w")
+    except:
+        logger.error(f'Could not open {outfile} for writing output.')
+    #Write the data from nextseq
+    try:
+        write_nextseq(nextseq_dict, outf)
+    except:
+        logger.error(f'Could not write output to {outfile}.')
 
+def write_nextseq(nextseq_dict, outf):
     #Print header
-    print('Week\tRuns\tSequenced Genomes\t', end='')
+    outf.write('Week\tRuns\tSequenced Genomes\t')
     #Find all strains sequenced so far
     all_strains = sorted(liststrains(nextseq_dict))
-    print("\t".join(all_strains))
+    outf.write("\t".join(all_strains) + "\n")
 
-    #Print data for all weeks
+    #Print nextdata for all weeks
     for week in nextseq_dict:
         num_runs = len(nextseq_dict[week])
         num_fastas = 0
@@ -82,10 +95,10 @@ def main (logdir, nextseqdir, eurofinsdir):
             num_fastas += nextseq_dict[week][run]['fastas']
 
         num_strains = strain_nums(all_strains, nextseq_dict, week)
-        print(f'{week}\t{num_runs}\t{num_fastas}', end = '')
+        outf.write(f'{week}\t{num_runs}\t{num_fastas}')
         for strain in sorted(num_strains):
-            print(f'\t{num_strains[strain]}', end='')
-        print("")
+            outf.write(f'\t{num_strains[strain]}')
+        outf.write("\n")
 
 def strain_nums(strainlist, nextseq_dict, week):
     #Build a dict with all seen strains
@@ -117,11 +130,19 @@ def pangolin_types (lineagepath):
         next(csv_file) #Skip header
         csv_reader = csv.reader(csv_file, delimiter=',')
         for row in csv_reader:
+            taxon = row[0]
             strain = row[1]
-            if strain in pango_dict:
-                pango_dict[strain] += 1
+            #Skip negative controls
+            if taxon.lower().startswith('consensus_neg'):
+                continue
+            #Skip positive controls
+            elif taxon.lower().startswith('consensus_pos'):
+                continue
             else:
-                pango_dict[strain] = 1
+                if strain in pango_dict:
+                    pango_dict[strain] += 1
+                else:
+                    pango_dict[strain] = 1
 
     return pango_dict
     
