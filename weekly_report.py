@@ -7,6 +7,7 @@ import os
 import re
 from collections import defaultdict
 import csv
+import glob
 
 @click.command()
 @click.option('--logdir', required=True,
@@ -16,7 +17,7 @@ import csv
               default='/medstore/results/clinical/SARS-CoV-2-typing/nextseq_data',
               help='Path/to/nextseq_data/directory, uses default if path not specified')
 @click.option('--eurofinsdir', required=True,
-              default='/medstore/results/clinical/SARS-CoV-2-typing/eurofins_data',
+              default='/medstore/results/clinical/SARS-CoV-2-typing/eurofins_data/goteborg',
               help='Path/to/eurofind_data/directory, uses default if path not specified')
 @click.option('-o', '--outfile', required=True,
               help='Path/to/output/file')
@@ -63,7 +64,23 @@ def main (logdir, nextseqdir, eurofinsdir, outfile):
             logger.warning(f'No lineage dir found for run: {run}. Pipeline still not finished?')
         
     #Find all eurofins samples which have been sequenced
+    eurofins_batches = find_eurofinsruns(eurofinsdir)
+    logger.info(f'Found {len(eurofins_batches)} Eurofins batches')
+    
     #Number of samples
+    eurofins_dict = defaultdict(lambda: defaultdict(dict))
+    for batch in eurofins_batches:
+        batchdate = "-".join(batch.split("-")[0:3])
+        batchweek = datetime.datetime.strptime(batchdate, '%Y-%m-%d').isocalendar()[1]
+        batchpath = os.path.join(eurofinsdir, batch)
+        
+        #Count all the fasta samples
+        run_num_samples = len(glob.glob1(batchpath, "*consensus.fasta"))
+        eurofins_dict[batchweek][batch]['fastas'] = run_num_samples
+        if run_num_samples == 0:
+            logger.warning(f'Could not find any fasta files for {batch}')
+        
+    
     #Number of all different pangolin types
 
     #Make an output file (csv + excel)
@@ -82,6 +99,7 @@ def main (logdir, nextseqdir, eurofinsdir, outfile):
 
 def write_nextseq(nextseq_dict, outf):
     #Print header
+    outf.write('In-House sequencing\n')
     outf.write('Week\tRuns\tSequenced Genomes\t')
     #Find all strains sequenced so far
     all_strains = sorted(liststrains(nextseq_dict))
@@ -165,6 +183,14 @@ def find_nextseqruns (nextseqdir):
             #d = datetime.datetime.strptime(dirdate, "%y%m%d")
             #if ((d - now).days) >= -7:
             #    dir_list.append(dirname)
+
+    return dir_list
+
+def find_eurofinsruns (nextseqdir):
+    dir_list = []
+    #Find all runs in folder
+    for dirname in next(os.walk(nextseqdir))[1]:
+        dir_list.append(dirname)
 
     return dir_list
 
