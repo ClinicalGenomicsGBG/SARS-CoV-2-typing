@@ -59,7 +59,7 @@ def main (logdir, nextseqdir, eurofinsdir, outfile):
         #First check that the pangolin dir exists
         lineagepath = os.path.join(nextseqdir, run, 'lineage',run + "_lineage_report.txt")
         if os.path.exists(lineagepath):
-            nextseq_dict[runweek][run]['lineages'] = pangolin_types(lineagepath)
+            nextseq_dict[runweek][run]['lineages'] = pangolin_types(lineagepath, ',')
         else:
             logger.warning(f'No lineage dir found for run: {run}. Pipeline still not finished?')
         
@@ -73,15 +73,34 @@ def main (logdir, nextseqdir, eurofinsdir, outfile):
         batchdate = "-".join(batch.split("-")[0:3])
         batchweek = datetime.datetime.strptime(batchdate, '%Y-%m-%d').isocalendar()[1]
         batchpath = os.path.join(eurofinsdir, batch)
-        
+     
         #Count all the fasta samples
         run_num_samples = len(glob.glob1(batchpath, "*consensus.fasta"))
-        eurofins_dict[batchweek][batch]['fastas'] = run_num_samples
         if run_num_samples == 0:
             logger.warning(f'Could not find any fasta files for {batch}')
+            continue
+        else:
+            eurofins_dict[batchweek][batch]['fastas'] = run_num_samples
         
-    
-    #Number of all different pangolin types
+        #Number of all different pangolin types
+        lineagefiles = glob.glob1(batchpath, "*lineage_classification.txt")
+
+        #Trim the list of lineages files if there are multiples 
+        if len(lineagefiles) == 0:
+            logger.warning(f'Could not find any pangolin types for {batch}')
+            continue
+        elif len(lineagefiles) > 1:
+            lineagefiles = trimlineages(lineagefiles)
+
+        #Get all strains
+        lineagepath = os.path.join(eurofinsdir, batch, lineagefiles[0])
+        eurofins_dict[batchweek][batch]['lineages'] = pangolin_types(lineagepath, '\t')
+
+        #Check if same number of fastas as strains
+        sum_fastas = eurofins_dict[batchweek][batch]['fastas']
+        sum_lineages = sum(eurofins_dict[batchweek][batch]['lineages'].values()) 
+        if sum_fastas != sum_lineages:
+            logger.warning(f'Sum of fasta files and strains do not match in {batch}')
 
     #Make an output file (csv + excel)
     #Probably keep appending to the same old file
@@ -95,7 +114,37 @@ def main (logdir, nextseqdir, eurofinsdir, outfile):
     try:
         write_nextseq(nextseq_dict, outf)
     except:
-        logger.error(f'Could not write output to {outfile}.')
+        logger.error(f'Could not write in-house sequencing output to {outfile}.')
+
+    #Write eurofins data to log
+  #  try:
+    write_eurofins(eurofins_dict, outf)
+   # except:
+   #     logger.error(f'Could not write Eurofins data to {outfile}')
+                
+def write_eurofins(eurofins_dict, outf):
+    #Print header
+    outf.write('Eurofins sequencing\n')
+    outf.write('Week\tBatches\tSequenced Genomes\t')
+    #Find all strains sequenced so far
+    all_strains = sorted(liststrains(eurofins_dict))
+ #   print(all_strains)
+    outf.write("\t".join(all_strains) + "\n")
+
+
+    #Print eurofins for all weeks
+    for week in eurofins_dict:
+        num_runs = len(eurofins_dict[week])
+        num_fastas = 0
+        for batch in eurofins_dict[week]:
+            num_fastas += eurofins_dict[week][batch]['fastas']
+
+        num_strains = strain_nums(all_strains, eurofins_dict, week)
+        outf.write(f'{week}\t{num_runs}\t{num_fastas}')
+        for strain in sorted(num_strains):
+            outf.write(f'\t{num_strains[strain]}')
+        outf.write("\n")
+
 
 def write_nextseq(nextseq_dict, outf):
     #Print header
@@ -118,6 +167,13 @@ def write_nextseq(nextseq_dict, outf):
             outf.write(f'\t{num_strains[strain]}')
         outf.write("\n")
 
+def trimlineages(lineage_list):
+    for element in lineage_list:
+        if element.startswith('20'):
+            lineage_list.remove(element)
+
+    return lineage_list
+
 def strain_nums(strainlist, nextseq_dict, week):
     #Build a dict with all seen strains
     straindict = {}
@@ -126,27 +182,31 @@ def strain_nums(strainlist, nextseq_dict, week):
 
     #for week in nextseq_dict:
     for run in nextseq_dict[week]:
-        for strain in nextseq_dict[week][run]['lineages']:
-            straindict[strain] = nextseq_dict[week][run]['lineages'][strain]
+        if 'lineages' in nextseq_dict[week][run].values():
+            for strain in nextseq_dict[week][run]['lineages']:
+                straindict[strain] = nextseq_dict[week][run]['lineages'][strain]
 
     return straindict
 
 def liststrains(nextseq_dict):
     strains = []
     for week in nextseq_dict:
+ #       print(week)
         for run in nextseq_dict[week]:
-            for strain in nextseq_dict[week][run]['lineages']:
-                if not strain in strains:
-                    strains.append(strain)
+#            print(run)
+            if 'lineages' in nextseq_dict[week][run].keys():
+                for strain in nextseq_dict[week][run]['lineages']:
+                    if not strain in strains:
+                        strains.append(strain)
     return strains
 
 
-def pangolin_types (lineagepath):
+def pangolin_types (lineagepath, delim):
     pango_dict = {}
     #Collect number of each found strain
     with open(lineagepath) as csv_file:
         next(csv_file) #Skip header
-        csv_reader = csv.reader(csv_file, delimiter=',')
+        csv_reader = csv.reader(csv_file, delimiter=delim)
         for row in csv_reader:
             taxon = row[0]
             strain = row[1]
@@ -155,6 +215,8 @@ def pangolin_types (lineagepath):
                 continue
             #Skip positive controls
             elif taxon.lower().startswith('consensus_pos'):
+                continue
+            elif strain.lower().startswith('none'):
                 continue
             else:
                 if strain in pango_dict:
