@@ -1,3 +1,11 @@
+"""
+Torrent server covid dumping script.
+
+Aims to parse through sequencing runs given run name regex and collect relevant files for dumping to seqstore.
+Majority of plugins work via given barcode (IonCode_0102) hence we create a mapping of barcode to sample id and work via it.
+"""
+
+
 import os
 import re
 import csv
@@ -122,7 +130,7 @@ def main():
     # Filter away thumbnail, tn
     all_covid_runs = [run for run in all_covid_runs if '_tn' not in run]
 
-
+    # Find runs matching regex
     good_run_paths = defaultdict(list)
     for run_path in all_covid_runs:
         regex = 'run([0-9]{2})'
@@ -131,17 +139,18 @@ def main():
 
         try:
             number = match.groups()[0]
-            if int(number) < 15:
+            if int(number) < 15:  # Skip all runs below run 15
                 continue
             good_run_paths[number].append(run_path)
         except AttributeError:
             print(f'error {run_path}')
             continue
 
-
+    # Loop through runs
     for number, run_paths in good_run_paths.items():
         for run_path in run_paths:
             try:
+                # Instantiate class and create barcode-ID mapping
                 TR = TorrentRun(run_path)
                 barcode_id_mapping = map_sample_id_barcode(TR.ion_params_json_path)
 
@@ -150,6 +159,7 @@ def main():
                 if multiple:
                     raise Exception(f'Found samples with multiple barcodes in run {TR.run_name}: {multiple}')  # NOTE No support for this hence exception
 
+                # Try and find plugin outputs. They may or may not be run/completed yet.
                 try:
                     pangolin_runs = TR.get_plugin_paths('SARS_CoV2_Pangolin')
                     latest_pangolin_run = max(pangolin_runs, key=lambda x: x['plugin_id'])
@@ -162,13 +172,17 @@ def main():
                 except Exception:  # NOTE: Probably not completed plugin running
                     continue
 
+                # Parse the pangolin results
                 pangolin_result = parse_pangolin_result(pangolin_result_path)
 
+                # Loop through barcode-ID mapping for the specific run
                 for barcode, sample_id in barcode_id_mapping.items():
                     # sample_id = sample_id.replace(' ', '')  # No one likes whitespaces in names
                     try:
+                        # If pangolin results are ok, proceed with the datadump for the sample
                         if pangolin_result[barcode]['status'] == 'passed_qc' and pangolin_result[barcode]['passes'] == 'Passed':
                             # fasta_name, fasta_sequence = get_sample_fasta(barcode, pangolin_consensus_fasta_path)
+                            # Grab fasta record (One giant fasta for all samples, hence subset)
                             fasta_record = get_sample_fasta(barcode, pangolin_consensus_fasta_path)
                             variant_call_vcf = get_sample_vcf(barcode, latest_variantcall_run)
 
@@ -182,13 +196,12 @@ def main():
                                     SeqIO.write(fasta_record, out, "fasta")
 
                             # Transfer vcf
-                            vcf_output_path = os.path.join(output_path, f'14_SE300_{sample_id}.vcf')
+                            vcf_output_path = os.path.join(output_path, f'14_SE300_{sample_id}.vcf.gz')
                             if not os.path.exists(vcf_output_path):
                                 shutil.copyfile(variant_call_vcf, vcf_output_path)
-
                         else:
                             continue
-                    except (IndexError, KeyError):
+                    except (IndexError, KeyError):  # NOTE: Failed sequencing results in keyerror. Not sure indexError is needed.
                         continue
 
             except Exception as e:
