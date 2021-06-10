@@ -6,5 +6,5 @@ class covid_seqstore_transfer(IonPlugin):
     runtypes = [RunType.COMPOSITE]
     runlevel = [RunLevel.LAST]
 
-    def launch():
+    def launch(self):
         pass
