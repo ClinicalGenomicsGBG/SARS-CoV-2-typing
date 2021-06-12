@@ -104,4 +104,11 @@ class covid_seqstore_transfer(IonPlugin):
 
         pangolin_csv_path = os.path.join(latest_plugin_output_path, '{}.xls'.format(run_name))  #NOTE: It's actually a csv
         pangolin_csv_info = parse_pangolin_csv(pangolin_csv_path)
+
+        # Filter away samples that failed pangolin QC
+        failed_samples = SampleCollection()
+        for barcode, pangolin_result in pangolin_csv_info.items():
+            if pangolin_result[barcode]['status'] != 'passed_qc' or pangolin_result[barcode]['passes'] != 'Passed':
+                sample_id = covid_samples.remove_sample(barcode)
+                failed_samples.add_sample(barcode, sample_id)
                 continue
