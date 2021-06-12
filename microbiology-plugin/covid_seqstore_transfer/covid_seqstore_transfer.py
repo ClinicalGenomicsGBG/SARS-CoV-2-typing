@@ -40,6 +40,30 @@ class SampleCollection:
         return self.sample_info
 
 
+def find_plugin_outputs(plugin_name, root_path):
+    plugin_output_paths = glob.glob(os.path.join(root_path, plugin_name, '*'))
+
+    plugin_outputs = {}
+    for plugin_output_path in plugin_output_paths:
+        index = plugin_output_path.split('.')[-1]
+        plugin_outputs[index] = plugin_output_path
+
+    return plugin_outputs
+
+
+def parse_pangolin_csv(pangolin_csv_path):
+    """Parse csv into more fun to read format."""
+    collected_info = {}
+    with open(pangolin_csv_path, 'r') as inp:
+        csv_handle = csv.DictReader(inp)
+
+        for row in csv_handle:
+            barcode = row.pop('Barcode')
+            collected_info[barcode] = row
+
+    return collected_info
+
+
 class covid_seqstore_transfer(IonPlugin):
     version = "0.0.1.0"
     runtypes = [RunType.COMPOSITE]
@@ -68,4 +92,16 @@ class covid_seqstore_transfer(IonPlugin):
 
             for barcode in sample_barcodes:
                 covid_samples.add_sample(barcode, sample_name)
+
+        # Parse for plugin outputs
+        root_plugin_output_path = os.path.join(root_report_path, 'plugin_out')
+
+        # Pangolin
+        plugin_name = config.pangolin_plugin_name
+        plugin_outputs = find_plugin_outputs(plugin_name, root_plugin_output_path)
+        latest_plugin_output_id = max(plugin_outputs, key=plugin_outputs.get)
+        latest_plugin_output_path = plugin_outputs[latest_plugin_output_id]
+
+        pangolin_csv_path = os.path.join(latest_plugin_output_path, '{}.xls'.format(run_name))  #NOTE: It's actually a csv
+        pangolin_csv_info = parse_pangolin_csv(pangolin_csv_path)
                 continue
