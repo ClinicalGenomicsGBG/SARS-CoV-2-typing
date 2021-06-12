@@ -1,4 +1,5 @@
 import re
+import config
 
 from ion.plugin import IonPlugin, RunType, RunLevel
 
@@ -22,10 +23,16 @@ class covid_seqstore_transfer(IonPlugin):
     version = "0.0.1.0"
     runtypes = [RunType.COMPOSITE]
     runlevel = [RunLevel.LAST]
+    depends = [config.pangolin_plugin_name, config.variant_caller_name]
 
     def launch(self):
-        not_processed_samples = []
 
+        root_report_path = self.startplugin['runinfo']['report_root_dir']
+
+        run_name = self.startplugin['expmeta']['run_name']
+        result_name = self.startplugin['expmeta']['results_name']
+        # instrument_name = self.startplugin['expmeta']['instrument']
+        # experiment_id = self.startplugin['expmeta']['results_name'].split('_')[-1]
         for sample_name, barcode_info in self.startplugin['plan']['barcodedSamples'].items():
             sample_name = clean_samplename(sample_name)
 
