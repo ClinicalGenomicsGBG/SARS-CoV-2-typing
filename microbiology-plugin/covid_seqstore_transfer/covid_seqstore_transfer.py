@@ -1,4 +1,9 @@
 import re
+import os
+import csv
+import glob
+import shutil
+
 import config
 
 from ion.plugin import IonPlugin, RunType, RunLevel
@@ -85,6 +90,22 @@ def read_fastas(fasta_path):
     return fasta_collection
 
 
+def read_vcf_paths(plugin_path):
+    vcf_collection = {}
+
+    all_paths = os.path.join(glob.glob(plugin_path, '*'))
+
+    regex = 'IonCode_0[0-9]{3}$'
+    sample_outputs = [path for path in all_paths if re.search(regex, path)]
+
+    for sample_output in sample_outputs:
+        barcode = os.path.basename(sample_output)
+        vcf_path = os.path.join(sample_output, 'TSVC_variants_{barcode}.vcf.gz'.format(barcode))
+        vcf_collection[barcode] = vcf_path
+
+    return vcf_collection
+
+
 class covid_seqstore_transfer(IonPlugin):
     version = "0.0.1.0"
     runtypes = [RunType.COMPOSITE]
@@ -137,3 +158,12 @@ class covid_seqstore_transfer(IonPlugin):
         pangolin_fasta_path = os.path.join(latest_plugin_output_path, '{}.fasta'.format(run_name))
         # Read fastas into memory on barcode keys
         sample_fastas = read_fastas(pangolin_fasta_path)
+
+        # Variant caller
+        plugin_name = config.variant_caller_name
+        plugin_outputs = find_plugin_outputs(plugin_name, root_plugin_output_path)
+        latest_plugin_output_id = max(plugin_outputs, key=plugin_outputs.get)
+        latest_plugin_output_path = plugin_outputs[latest_plugin_output_id]
+
+        # Read vcf paths into memory on barcode keys
+        sample_vcfs = read_vcf_paths(latest_plugin_output_path)
