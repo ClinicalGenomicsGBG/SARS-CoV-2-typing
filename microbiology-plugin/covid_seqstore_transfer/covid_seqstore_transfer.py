@@ -64,6 +64,27 @@ def parse_pangolin_csv(pangolin_csv_path):
     return collected_info
 
 
+def read_fastas(fasta_path):
+    fasta_collection = {}
+
+    with open(fasta_path, 'r') as fa:
+        fasta_name = ''
+        sequence = ''
+
+        for line in fa.readlines():
+            if line.startswith('>'):
+                if fasta_name:
+                    fasta_collection[fasta_name] = sequence
+                    sequence = ''
+
+                # >IonCode_0101_DC21-45858
+                fasta_name = line.strip().replace('>', '').rsplit('_', 1)[0]
+            else:
+                sequence += line.strip()
+
+    return fasta_collection
+
+
 class covid_seqstore_transfer(IonPlugin):
     version = "0.0.1.0"
     runtypes = [RunType.COMPOSITE]
@@ -112,3 +133,7 @@ class covid_seqstore_transfer(IonPlugin):
                 sample_id = covid_samples.remove_sample(barcode)
                 failed_samples.add_sample(barcode, sample_id)
                 continue
+
+        pangolin_fasta_path = os.path.join(latest_plugin_output_path, '{}.fasta'.format(run_name))
+        # Read fastas into memory on barcode keys
+        sample_fastas = read_fastas(pangolin_fasta_path)
