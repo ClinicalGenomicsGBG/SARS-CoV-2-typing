@@ -167,3 +167,20 @@ class covid_seqstore_transfer(IonPlugin):
 
         # Read vcf paths into memory on barcode keys
         sample_vcfs = read_vcf_paths(latest_plugin_output_path)
+
+        # Dump data at designated location, under result name
+        output_path = os.path.join(config.root_dump_path, result_name)
+        os.makedirs(output_path, exist_ok=True)
+        for sample_barcode, sample_name in covid_samples.sample_info.items():
+            sample_fasta_sequence = sample_fastas[sample_barcode]
+            sample_fasta_output_path = os.path.join(output_path, '{}.fa'.format(sample_name))
+
+            with open(sample_fasta_output_path, 'w') as out:
+                out.write('>{}\n'.format(sample_barcode))
+                out.write(sample_fasta_sequence)
+
+            sample_vcf_path = sample_vcfs[sample_barcode]
+            sample_vcf_basename = os.path.basename(sample_vcf_path)
+            shutil.copyfile(sample_vcf_path, os.path.join(output_path, sample_vcf_basename))
+
+        return True
