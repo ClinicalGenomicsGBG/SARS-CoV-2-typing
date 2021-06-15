@@ -25,9 +25,9 @@ basenames = [os.path.basename(path) for path in consensus_file_paths]
 sample_names = set([basename.split('.')[0].split('_')[-1] for basename in basenames])  # Ugly split but should work. Set removes duplicates
 
 
-''' 
+ 
 '''select a small list of samples for trial, this should be removed later '''
-
+'''
 sub_sample = []
 count = 0
 for elem in iter(sample_names):
