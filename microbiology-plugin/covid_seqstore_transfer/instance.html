@@ -1,8 +1,122 @@
 <!DOCTYPE html>
 <html>
     <body>
-        <h1>Covid Seqstore Transfer Plugin</h1>
-        <p>This plugin is intended to be used for initiating the transfer of various plugin outputs and fastqs for samples to seqstore for uploads to varioud cloud storages.</p>
-        <p>For questions, please contact clinicalgenomics@gu.se</p>
+        <form id="userForm" name="userForm">
+            <div style="padding: 5px; width: 750px; margin: auto;">
+                <div>
+                  <h2>Covid Seqstore Transfer Plugin</h2>
+                  <p>This plugin is intended to be used for initiating the transfer of various plugin outputs and fastqs for SARS-CoV2 samples to seqstore for uploads to varioud cloud storages.</p>
+                  <p>If you have any questions, email us at clinicalgenomics@gu.se and we will get back to you as soon as possible.</p>
+                </div>
+
+                <fieldset id="user_options" name="user_options" style="padding:10px;">
+                    <legend style="font-size:14px;">Settings</legend>
+                    <input type="checkbox" name="checkbox1" value="placeholder">Placeholder<br>
+                    <input type="text" name="input1" value="" size="75"><br>
+                </fieldset>
+                <br>
+                <fieldset id="user_options" name="user_options" style="padding:10px;">
+                    <legend style="font-size:14px;">Metadata</legend>
+                    <input type="file" id="fileMetadata" name="fileMetadata">
+                </fieldset>
+            </div>
+            <div align="center">
+                <p id="message" style="color:red">Please input a metadata file before proceeding</p>
+                <input class="postbutton" id="postbutton" type="submit" value="Run workflows!">
+            </div>
+        </form>
+
+        <script>
+         $(document).ready(function() {
+             // For storing sample_id - metadata mapping
+             var metadata = {};
+
+             // Check for file selection
+             document.getElementById('fileMetadata').addEventListener('change', readFileAsString)
+             function readFileAsString() {
+                 var files = this.files;
+                 if (files.length === 0) {
+                     alert('Please select a file before proceeding');
+                     return; // If no file selected
+                 }
+
+                 // This is spooky magic, dont ask
+                 var reader = new FileReader();
+                 reader.onload = function(event) {
+                     var lines = this.result.split('\n');
+
+                     // Reset the metadata dict if a new file is chosen
+                     for (let key in metadata) {
+                         console.log(key);
+                         delete metadata[key];
+                     }
+
+                     var headers = lines[0];  // Not really used
+                     var data_rows = lines.slice(1);
+
+                     $.each(data_rows, function() {
+                         var fields = this.split(';');  // Split on standard swedish xlsx -> csv save delimiter
+                         var sample_id = fields[1]
+                         var description = fields[fields.length - 1];
+                         if (sample_id == null) {
+                             return;  // Skips final 'undefined', this is jquery equivalent of continue
+                         }
+                         console.log(sample_id, description);
+                         metadata[sample_id] = description;
+                     });
+                 };
+                 reader.readAsText(files[0]);  //This works, dunno why
+
+                 if (metadata) {
+                     $("#message").hide();
+                 }
+             };
+
+             // a foo to serialize a DOM object into json
+             $.fn.serializeObject = function() {
+                 var obj = {};
+                 var obj_array = this.serializeArray();
+                 $.each(obj_array, function() {
+                     // obj with this key already exists
+                     if(obj[this.name] != null) {
+                         if(!obj[this.name].push)
+                             {
+                                 obj[this.name] = [obj[this.name]];
+                             }
+                         obj[this.name].push(this.value || '');
+                     }
+                     else {
+                         obj[this.name] = this.value || '';
+                     }
+                 });
+                 return obj;
+             };
+
+             // when submit button is clicked send form data to server
+             $('#postbutton').click(function(e) {
+
+                 var serialized_obj = $('#userForm').serializeObject();
+                 var pluginAPIJSON = {"plugin" : [TB_plugin.fields.name],
+                                      "pluginconfig" : {'user_settings': serialized_obj,
+                                                        'input_metadata': metadata}};
+                 pluginAPIJSON = JSON.stringify(pluginAPIJSON);
+                 var pluginURL = "/rundb/api/v1/results/" + TB_result + "/plugin/";
+                 $.ajax({
+                     type: 'POST',
+                     url: pluginURL,
+                     async: false,
+                     contentType: "application/json; charset=utf-8",
+                     success: function(data) {
+                         $("#json_result").html('<div style="text-align:center;"> \
+          <img src="/site_media/jquery/colorbox/images/loading.gif" \
+          alt="Running Plugin" style="float:center"></img> \
+          <p>Running the Plugin...</p></div>');
+                         setTimeout("parent.$.fn.colorbox.close()",2000);},
+                     data: pluginAPIJSON,
+                     dataType: "json"
+                 }); // ajax call
+             }); // from button click
+         }); // main jquery function
+        </script>
     </body>
 </html>
