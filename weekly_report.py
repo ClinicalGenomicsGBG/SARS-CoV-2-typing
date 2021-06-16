@@ -34,7 +34,7 @@ def main (logdir, nextseqdir, eurofinsdir, outfile):
     logger.info(f'The following NextSeq runs were found: {" ".join(nextseq_runs)}')
 
     #Find number of samples for nextseq run
-    logger.info('Finding all samples from in-house seqeuncing runs')
+    logger.info('Finding all samples from in-house sequencing runs')
     nextseq_dict = defaultdict(lambda: defaultdict(dict))
     for run in nextseq_runs:
         #Find which week the run belongs to
@@ -105,32 +105,27 @@ def main (logdir, nextseqdir, eurofinsdir, outfile):
     #Make an output file (csv + excel)
     #Probably keep appending to the same old file
     logger.info(f'Writing data to {outfile}')
+
     #Open the output file
     try:
         outf = open(outfile, "w")
     except:
         logger.error(f'Could not open {outfile} for writing output.')
-    #Write the data from nextseq
-    try:
-        write_nextseq(nextseq_dict, outf)
-    except:
-        logger.error(f'Could not write in-house sequencing output to {outfile}.')
 
-    #Write eurofins data to log
-  #  try:
+    #Write the data from nextseq
+    write_nextseq(nextseq_dict, outf, logger)
+    # Write the data from eurofins
     write_eurofins(eurofins_dict, outf)
-   # except:
-   #     logger.error(f'Could not write Eurofins data to {outfile}')
-                
+
+
 def write_eurofins(eurofins_dict, outf):
     #Print header
     outf.write('Eurofins sequencing\n')
     outf.write('Week\tBatches\tSequenced Genomes\t')
     #Find all strains sequenced so far
     all_strains = sorted(liststrains(eurofins_dict))
- #   print(all_strains)
-    outf.write("\t".join(all_strains) + "\n")
 
+    outf.write("\t".join(all_strains) + "\n")
 
     #Print eurofins for all weeks
     for week in eurofins_dict:
@@ -140,13 +135,13 @@ def write_eurofins(eurofins_dict, outf):
             num_fastas += eurofins_dict[week][batch]['fastas']
 
         num_strains = strain_nums(all_strains, eurofins_dict, week)
+
         outf.write(f'{week}\t{num_runs}\t{num_fastas}')
         for strain in sorted(num_strains):
             outf.write(f'\t{num_strains[strain]}')
         outf.write("\n")
 
-
-def write_nextseq(nextseq_dict, outf):
+def write_nextseq(nextseq_dict, outf, logger):
     #Print header
     outf.write('In-House sequencing\n')
     outf.write('Week\tRuns\tSequenced Genomes\t')
@@ -162,6 +157,16 @@ def write_nextseq(nextseq_dict, outf):
             num_fastas += nextseq_dict[week][run]['fastas']
 
         num_strains = strain_nums(all_strains, nextseq_dict, week)
+
+        #Check if number of fastas and lineages match
+        #Don't print weeks where it does not.
+        #print(f'{week}: {num_fastas} {sum(num_strains.values())}')
+        if num_fastas != sum(num_strains.values()):
+            logger.info(f'Num fastas and num strains not matching for week {week}, skipping writing output.')
+            continue
+        #     logger.warning(f'Number of fastas in {week} is not same as num of strains. '
+        #                    f'Fastas: {num_fastas}, strains: {sum(num_strains.values())}')
+
         outf.write(f'{week}\t{num_runs}\t{num_fastas}')
         for strain in sorted(num_strains):
             outf.write(f'\t{num_strains[strain]}')
@@ -182,24 +187,22 @@ def strain_nums(strainlist, nextseq_dict, week):
 
     #for week in nextseq_dict:
     for run in nextseq_dict[week]:
-        if 'lineages' in nextseq_dict[week][run].values():
+        if 'lineages' in nextseq_dict[week][run].keys():
             for strain in nextseq_dict[week][run]['lineages']:
-                straindict[strain] = nextseq_dict[week][run]['lineages'][strain]
+                straindict[strain] += nextseq_dict[week][run]['lineages'][strain]
+
 
     return straindict
 
 def liststrains(nextseq_dict):
     strains = []
     for week in nextseq_dict:
- #       print(week)
         for run in nextseq_dict[week]:
-#            print(run)
             if 'lineages' in nextseq_dict[week][run].keys():
                 for strain in nextseq_dict[week][run]['lineages']:
                     if not strain in strains:
                         strains.append(strain)
     return strains
-
 
 def pangolin_types (lineagepath, delim):
     pango_dict = {}
@@ -229,7 +232,9 @@ def pangolin_types (lineagepath, delim):
 def num_fasta (fastadir):
     num_fasta = 0
     for fasta in os.listdir(fastadir):
-        if not fasta.lower().startswith('neg') and not fasta.lower().startswith('pos'):
+        if not fasta.lower().startswith('neg') \
+                and not fasta.lower().startswith('pos')\
+                and fasta.lower().endswith('.fa'):
             num_fasta += 1
     return num_fasta
 
@@ -237,7 +242,7 @@ def find_nextseqruns (nextseqdir):
     dir_list = []
     #Find all runs in folder
     for dirname in next(os.walk(nextseqdir))[1]:
-        if re.match('^2[1-4]', dirname):
+        if re.match('^2[1-4]', dirname) and len(dirname.split("_")) == 4:
             dirdate = dirname.split("_")[0]
             dir_list.append(dirname)
 
