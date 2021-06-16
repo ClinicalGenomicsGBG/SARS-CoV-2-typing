@@ -1,6 +1,7 @@
 import re
 import os
 import csv
+import json
 import glob
 import shutil
 
@@ -9,19 +10,35 @@ import config
 from ion.plugin import IonPlugin, RunType, RunLevel
 
 
-def clean_samplename(sample_name):
-    """Return clean and formatted samplename in the event of typos."""
-    for character in [' ']:
-        sample_name.replace(character, '')
+class ProgressRender:
+    def __init__(self):
+        self.lines = []
+        self.output = 'progress_block.html'  # Relative path to plugin working directory
 
-    for character in ['_']:
-        sample_name.replace(character, '-')
+    def add_subheader(self, line):
+        subheader = '<h3>{}</h3>'.format(line)
+        self.lines.append(subheader)
 
-    return sample_name
+    def add_line(self, line):
+        """Add line to be rendered in .html."""
+        self.lines.append(line)
 
+    def clear(self):
+        """Remove previous lines."""
+        self.lines = []
 
-def is_covid_sample(sample_name):
-    return re.search('D[A-Z]2[0-9]-[0-9]+', sample_name, re.IGNORECASE)
+    def render(self):
+        """Render progress by writing to .html."""
+        html_pre = '<html><body>'
+        html_post = '</body></html>'
+
+        joined_lines = '<br>'.join(self.lines)
+        html = html_pre + joined_lines + html_post
+
+        with open(self.output, 'w') as out:
+            out.write(html)
+
+        return html
 
 
 class SampleCollection:
@@ -43,6 +60,21 @@ class SampleCollection:
 
     def __iter__(self):
         return self.sample_info
+
+
+def clean_samplename(sample_name):
+    """Return clean and formatted samplename in the event of typos."""
+    for character in [' ']:
+        sample_name.replace(character, '')
+
+    for character in ['_']:
+        sample_name.replace(character, '-')
+
+    return sample_name
+
+
+def is_covid_sample(sample_name):
+    return re.search('D[A-Z]2[0-9]-[0-9]+', sample_name, re.IGNORECASE)
 
 
 def find_plugin_outputs(plugin_name, root_path):
@@ -135,6 +167,15 @@ class covid_seqstore_transfer(IonPlugin):
             for barcode in sample_barcodes:
                 covid_samples.add_sample(barcode, sample_name)
 
+        # Filter away samples without matching metadata
+        no_metadata_samples = SampleCollection()
+        for barcode, sample_name in covid_samples.sample_info.copy().items():  # NOTE: Copy as we remove what we iterate through otherwise
+            try:
+                self.startplugin['pluginconfig']['input_metadata'][sample_name]  # NOTE: This might cause an issue with misspellings since we clean names previously
+            except KeyError:
+                no_metadata_samples.add_sample(barcode, sample_name)
+                covid_samples.remove_sample(barcode)
+
         # Parse for plugin outputs
         root_plugin_output_path = os.path.join(root_report_path, 'plugin_out')
 
@@ -182,5 +223,28 @@ class covid_seqstore_transfer(IonPlugin):
             sample_vcf_path = sample_vcfs[sample_barcode]
             sample_vcf_basename = os.path.basename(sample_vcf_path)
             shutil.copyfile(sample_vcf_path, os.path.join(output_path, sample_vcf_basename))
+
+        # Dump metadata
+        metadata_output_path = os.path.join(output_path, 'metadata.json')
+        with open(metadata_output_path, 'w') as out:
+            json.dump(self.startplugin['pluginconfig']['input_metadata'], out, indent=4)
+
+        # Setup class for rendering html to user on plugin page
+        progress_renderer = ProgressRender()
+
+        progress_renderer.add_subheader('Transferred Samples:')
+        for sample_barcode, sample_name in covid_samples.sample_info.items():
+            metadata = self.startplugin['pluginconfig']['input_metadata'][sample_name]
+            progress_renderer.add_line('\t'.join([sample_barcode, sample_name, metadata]))
+
+        progress_renderer.add_line(' ')
+        progress_renderer.add_subheader('QC Failed Samples:')
+        for sample_barcode, sample_name in failed_samples.sample_info.items():
+            progress_renderer.add_line('\t'.join([sample_barcode, sample_name]))
+
+        progress_renderer.add_line(' ')
+        progress_renderer.add_subheader('No Metadata Samples:')
+        for sample_barcode, sample_name in no_metadata_samples.sample_info.items():
+            progress_renderer.add_line('\t'.join([sample_barcode, sample_name]))
 
         return True
