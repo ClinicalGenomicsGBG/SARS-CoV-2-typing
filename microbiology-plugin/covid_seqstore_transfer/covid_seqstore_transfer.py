@@ -7,7 +7,7 @@ import shutil
 
 import config
 
-from ion.plugin import IonPlugin, RunType, RunLevel
+from ion.plugin import IonPlugin, PluginCLI, RunType, RunLevel
 
 
 class ProgressRender:
@@ -58,6 +58,14 @@ class SampleCollection:
     def remove_sample(self, barcode):
         return self.sample_info.pop(barcode)
 
+    @property
+    def barcodes(self):
+        return self.sample_info.keys()
+
+    @property
+    def sample_names(self):
+        return self.sample_info.values()
+
     def __iter__(self):
         return self.sample_info
 
@@ -78,7 +86,7 @@ def is_covid_sample(sample_name):
 
 
 def find_plugin_outputs(plugin_name, root_path):
-    plugin_output_paths = glob.glob(os.path.join(root_path, plugin_name, '*'))
+    plugin_output_paths = glob.glob(os.path.join(root_path, '{}_*'.format(plugin_name)))
 
     plugin_outputs = {}
     for plugin_output_path in plugin_output_paths:
@@ -125,21 +133,21 @@ def read_fastas(fasta_path):
 def read_vcf_paths(plugin_path):
     vcf_collection = {}
 
-    all_paths = os.path.join(glob.glob(plugin_path, '*'))
+    all_paths = glob.glob(os.path.join(plugin_path, '*'))
 
     regex = 'IonCode_0[0-9]{3}$'
     sample_outputs = [path for path in all_paths if re.search(regex, path)]
 
     for sample_output in sample_outputs:
         barcode = os.path.basename(sample_output)
-        vcf_path = os.path.join(sample_output, 'TSVC_variants_{barcode}.vcf.gz'.format(barcode))
+        vcf_path = os.path.join(sample_output, 'TSVC_variants_{}.vcf.gz'.format(barcode))
         vcf_collection[barcode] = vcf_path
 
     return vcf_collection
 
 
 class covid_seqstore_transfer(IonPlugin):
-    version = "0.0.1.0"
+    version = "0.0.1.16"
     runtypes = [RunType.COMPOSITE]
     runlevel = [RunLevel.LAST]
     depends = [config.pangolin_plugin_name, config.variant_caller_name]
@@ -191,7 +199,10 @@ class covid_seqstore_transfer(IonPlugin):
         # Filter away samples that failed pangolin QC
         failed_samples = SampleCollection()
         for barcode, pangolin_result in pangolin_csv_info.items():
-            if pangolin_result[barcode]['status'] != 'passed_qc' or pangolin_result[barcode]['passes'] != 'Passed':
+            if barcode not in covid_samples.barcodes:  # Already filtered away
+                continue
+
+            if pangolin_result['status'] != 'passed_qc' or pangolin_result['passes'] != 'Passed':
                 sample_id = covid_samples.remove_sample(barcode)
                 failed_samples.add_sample(barcode, sample_id)
                 continue
@@ -211,7 +222,8 @@ class covid_seqstore_transfer(IonPlugin):
 
         # Dump data at designated location, under result name
         output_path = os.path.join(config.root_dump_path, result_name)
-        os.makedirs(output_path, exist_ok=True)
+        if not os.path.exists(output_path):
+            os.makedirs(output_path)
         for sample_barcode, sample_name in covid_samples.sample_info.items():
             sample_fasta_sequence = sample_fastas[sample_barcode]
             sample_fasta_output_path = os.path.join(output_path, '{}.fa'.format(sample_name))
@@ -221,13 +233,20 @@ class covid_seqstore_transfer(IonPlugin):
                 out.write(sample_fasta_sequence)
 
             sample_vcf_path = sample_vcfs[sample_barcode]
-            sample_vcf_basename = os.path.basename(sample_vcf_path)
-            shutil.copyfile(sample_vcf_path, os.path.join(output_path, sample_vcf_basename))
+            sample_vcf_name = '{}.vcf.gz'.format(sample_name)
+            shutil.copyfile(sample_vcf_path, os.path.join(output_path, sample_vcf_name))
 
         # Dump metadata
+        metadata = self.startplugin['pluginconfig']['input_metadata']
+        # Remove failed prior to dump
+        for _, sample_name in failed_samples.sample_info.items():
+            try:
+                metadata.pop(sample_name)
+            except KeyError:  # Not all failed may have metadata
+                continue
         metadata_output_path = os.path.join(output_path, 'metadata.json')
         with open(metadata_output_path, 'w') as out:
-            json.dump(self.startplugin['pluginconfig']['input_metadata'], out, indent=4)
+            json.dump(metadata, out, indent=4)
 
         # Setup class for rendering html to user on plugin page
         progress_renderer = ProgressRender()
@@ -237,14 +256,18 @@ class covid_seqstore_transfer(IonPlugin):
             metadata = self.startplugin['pluginconfig']['input_metadata'][sample_name]
             progress_renderer.add_line('\t'.join([sample_barcode, sample_name, metadata]))
 
-        progress_renderer.add_line(' ')
         progress_renderer.add_subheader('QC Failed Samples:')
         for sample_barcode, sample_name in failed_samples.sample_info.items():
             progress_renderer.add_line('\t'.join([sample_barcode, sample_name]))
 
-        progress_renderer.add_line(' ')
         progress_renderer.add_subheader('No Metadata Samples:')
         for sample_barcode, sample_name in no_metadata_samples.sample_info.items():
             progress_renderer.add_line('\t'.join([sample_barcode, sample_name]))
 
+        progress_renderer.render()
+
         return True
+
+
+if __name__ == "__main__":
+    PluginCLI()
