@@ -1,11 +1,15 @@
 <!DOCTYPE html>
 <html>
+    <head>
+        <script type="text/javascript" src="/site_media/resources/jquery/jquery-1.8.2.js"></script>
+    </head>
     <body>
         <form id="userForm" name="userForm">
             <div style="padding: 5px; width: 750px; margin: auto;">
                 <div>
                   <h2>Covid Seqstore Transfer Plugin</h2>
                   <p>This plugin is intended to be used for initiating the transfer of various plugin outputs and fastqs for SARS-CoV2 samples to seqstore for uploads to varioud cloud storages.</p>
+                  <p>You are allowed to run the plugin multiple times. Please use an as completed as possible metadata file when running. The latest attached metadata file will always be used, therefore do not input multiple subsets of the metadata over several runs.</p>
                   <p>If you have any questions, email us at clinicalgenomics@gu.se and we will get back to you as soon as possible.</p>
                 </div>
 
@@ -22,7 +26,7 @@
             </div>
             <div align="center">
                 <p id="message" style="color:red">Please input a metadata file before proceeding</p>
-                <input class="postbutton" id="postbutton" type="submit" value="Run workflows!">
+                <input class="postbutton" id="postbutton" type="submit" value="Run plugin">
             </div>
         </form>
 
