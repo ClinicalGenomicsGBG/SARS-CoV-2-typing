@@ -1,6 +1,7 @@
 
 #----- Script for uploading files to HCP server -----#
 
+## usage: "/apps/bio/software/anaconda2/envs/hcp/bin/python3.6 hcp_upload_test.py"
 
 from hcp import HCPManager
 
