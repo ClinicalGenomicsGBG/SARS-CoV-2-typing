@@ -147,7 +147,7 @@ def read_vcf_paths(plugin_path):
 
 
 class covid_seqstore_transfer(IonPlugin):
-    version = "0.0.1.16"
+    version = "0.1.0.0"
     runtypes = [RunType.COMPOSITE]
     runlevel = [RunLevel.LAST]
     depends = [config.pangolin_plugin_name, config.variant_caller_name]
