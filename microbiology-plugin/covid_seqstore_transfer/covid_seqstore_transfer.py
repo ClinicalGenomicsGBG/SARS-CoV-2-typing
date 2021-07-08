@@ -4,10 +4,12 @@ import csv
 import json
 import glob
 import shutil
+import subprocess
 
 import config
 
 from ion.plugin import IonPlugin, PluginCLI, RunType, RunLevel
+from ion.utils import blockprocessing
 
 
 class ProgressRender:
@@ -147,12 +149,14 @@ def read_vcf_paths(plugin_path):
 
 
 class covid_seqstore_transfer(IonPlugin):
-    version = "0.1.0.0"
+    version = "0.1.1.1"
     runtypes = [RunType.COMPOSITE]
     runlevel = [RunLevel.LAST]
     depends = [config.pangolin_plugin_name, config.variant_caller_name]
 
     def launch(self):
+        with open('barcodes.json', 'r') as fh:
+            self.barcodes = json.load(fh)  # NOTE: Not available in memory like startplugin
 
         root_report_path = self.startplugin['runinfo']['report_root_dir']
 
@@ -197,14 +201,14 @@ class covid_seqstore_transfer(IonPlugin):
         pangolin_csv_info = parse_pangolin_csv(pangolin_csv_path)
 
         # Filter away samples that failed pangolin QC
-        failed_samples = SampleCollection()
+        qc_failed_samples = SampleCollection()
         for barcode, pangolin_result in pangolin_csv_info.items():
             if barcode not in covid_samples.barcodes:  # Already filtered away
                 continue
 
             if pangolin_result['status'] != 'passed_qc' or pangolin_result['passes'] != 'Passed':
                 sample_id = covid_samples.remove_sample(barcode)
-                failed_samples.add_sample(barcode, sample_id)
+                qc_failed_samples.add_sample(barcode, sample_id)
                 continue
 
         pangolin_fasta_path = os.path.join(latest_plugin_output_path, '{}.fasta'.format(run_name))
@@ -224,22 +228,41 @@ class covid_seqstore_transfer(IonPlugin):
         output_path = os.path.join(config.root_dump_path, result_name)
         if not os.path.exists(output_path):
             os.makedirs(output_path)
+
+        transfer_failed_samples = SampleCollection()
         for sample_barcode, sample_name in covid_samples.sample_info.items():
-            sample_fasta_sequence = sample_fastas[sample_barcode]
-            sample_fasta_output_path = os.path.join(output_path, '{}.fa'.format(sample_name))
+            try:
+                sample_fasta_sequence = sample_fastas[sample_barcode]
+                sample_fasta_output_path = os.path.join(output_path, '{}.fa'.format(sample_name))
 
-            with open(sample_fasta_output_path, 'w') as out:
-                out.write('>{}\n'.format(sample_barcode))
-                out.write(sample_fasta_sequence)
+                # FASTA
+                with open(sample_fasta_output_path, 'w') as out:
+                    out.write('>{}\n'.format(sample_barcode))
+                    out.write(sample_fasta_sequence)
 
-            sample_vcf_path = sample_vcfs[sample_barcode]
-            sample_vcf_name = '{}.vcf.gz'.format(sample_name)
-            shutil.copyfile(sample_vcf_path, os.path.join(output_path, sample_vcf_name))
+                # VCF
+                sample_vcf_path = sample_vcfs[sample_barcode]
+                sample_vcf_name = '{}.vcf.gz'.format(sample_name)
+                sample_vcf_output_path = os.path.join(output_path, sample_vcf_name)
+                shutil.copyfile(sample_vcf_path, sample_vcf_output_path)
+
+                # FASTQ
+                sample_bam_path = self.barcodes[sample_barcode]['bam_filepath']
+                sample_fastq_name = '{}.fastq'.format(sample_name)
+                sample_fastq_output_path = os.path.join(output_path, sample_fastq_name)
+                command = blockprocessing.bam2fastq_command(sample_bam_path, sample_fastq_output_path)
+                subprocess.check_call(command, shell=True)  # NOTE Security issue. Enables shell commands when user defines sample names
+                subprocess.check_call(['gzip', sample_fastq_output_path])  # Edits in place
+
+            except Exception as e:
+                self.log.error(e)
+                transfer_failed_samples.add_sample(sample_barcode, sample_name)
+                covid_samples.remove_sample(sample_barcode)
 
         # Dump metadata
         metadata = self.startplugin['pluginconfig']['input_metadata']
         # Remove failed prior to dump
-        for _, sample_name in failed_samples.sample_info.items():
+        for _, sample_name in qc_failed_samples.sample_info.items():
             try:
                 metadata.pop(sample_name)
             except KeyError:  # Not all failed may have metadata
@@ -256,8 +279,12 @@ class covid_seqstore_transfer(IonPlugin):
             metadata = self.startplugin['pluginconfig']['input_metadata'][sample_name]
             progress_renderer.add_line('\t'.join([sample_barcode, sample_name, metadata]))
 
+        progress_renderer.add_subheader('Transfer Failed Samples:')
+        for sample_barcode, sample_name in transfer_failed_samples.sample_info.items():
+            progress_renderer.add_line('\t'.join([sample_barcode, sample_name]))
+
         progress_renderer.add_subheader('QC Failed Samples:')
-        for sample_barcode, sample_name in failed_samples.sample_info.items():
+        for sample_barcode, sample_name in qc_failed_samples.sample_info.items():
             progress_renderer.add_line('\t'.join([sample_barcode, sample_name]))
 
         progress_renderer.add_subheader('No Metadata Samples:')
