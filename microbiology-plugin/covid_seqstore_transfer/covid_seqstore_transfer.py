@@ -149,7 +149,7 @@ def read_vcf_paths(plugin_path):
 
 
 class covid_seqstore_transfer(IonPlugin):
-    version = "0.1.1.1"
+    version = "0.1.2.1"
     runtypes = [RunType.COMPOSITE]
     runlevel = [RunLevel.LAST]
     depends = [config.pangolin_plugin_name, config.variant_caller_name]
@@ -250,14 +250,19 @@ class covid_seqstore_transfer(IonPlugin):
                 sample_bam_path = self.barcodes[sample_barcode]['bam_filepath']
                 sample_fastq_name = '{}.fastq'.format(sample_name)
                 sample_fastq_output_path = os.path.join(output_path, sample_fastq_name)
-                command = blockprocessing.bam2fastq_command(sample_bam_path, sample_fastq_output_path)
-                subprocess.check_call(command, shell=True)  # NOTE Security issue. Enables shell commands when user defines sample names
-                subprocess.check_call(['gzip', sample_fastq_output_path])  # Edits in place
+                if not sample_fastq_output_path:
+                    command = blockprocessing.bam2fastq_command(sample_bam_path, sample_fastq_output_path)
+                    subprocess.check_call(command, shell=True)  # NOTE Security issue. Enables shell commands when user defines sample names
+                    subprocess.check_call(['gzip', sample_fastq_output_path])  # Edits in place
 
             except Exception as e:
                 self.log.error(e)
                 transfer_failed_samples.add_sample(sample_barcode, sample_name)
                 covid_samples.remove_sample(sample_barcode)
+
+        # Dump pangolin result
+        pangolin_csv_output_path = os.path.join(output_path, 'pangolin.csv')
+        shutil.copyfile(pangolin_csv_path, pangolin_csv_output_path)
 
         # Dump metadata
         metadata = self.startplugin['pluginconfig']['input_metadata']
